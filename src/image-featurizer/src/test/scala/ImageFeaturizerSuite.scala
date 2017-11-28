@@ -72,6 +72,15 @@ class ImageFeaturizerSuite extends LinuxOnly with CNTKTestUtils with RoundTripTe
     compareToTestModel(result)
   }
 
+  test("the Image feature should work repeatedly") {
+    val model = resNetModel().setCutOutputLayers(0)
+    val data = images.union(images).union(images).cache()
+    (1 to 300).foreach{i =>
+      val res = model.transform(data).select(outputCol).collect()
+      println((res.length, i))
+    }
+  }
+
   test("the Image feature should work with the modelSchema + new images") {
     val newImages = session.read
       .format(classOf[ImageFileFormat].getName)

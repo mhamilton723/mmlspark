@@ -96,6 +96,16 @@ class CNTKModelSuite extends LinuxOnly with CNTKTestUtils with RoundTripTestBase
     compareToTestModel(result)
   }
 
+  test("A CNTK model should work repeatedly") {
+    val model = testModel()
+    val data = (1 to 10).map(i => images).reduce(_.union(_)).cache()
+    (1 to 3000).foreach{i =>
+      val res = model.transform(data).select(outputCol).collect()
+      println((res.length, i))
+      if (i%10==0){System.gc()}
+    }
+  }
+
   test("A CNTK model should work on resized batches") {
     val model = testModel()
     val result = model.transform(images.repartition(1))
