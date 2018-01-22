@@ -18,7 +18,7 @@ import org.tensorflow.TensorFlow
 import org.tensorflow.types.UInt8
 //import com.microsoft.ml.spark.InputToTensor
 
-class TFModelExecutioner extends Serializable {
+class TFModelExecutor extends Serializable {
 
   //TODO: Modify the main to be able to evaluate multiple inputs - would save on loading model every time.
 

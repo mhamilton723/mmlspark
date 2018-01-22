@@ -27,7 +27,7 @@ class TensorflowSuite extends TestBase {
 //  }
 
   test("Inception model executed in scala (Java version tested in TensorflowTest.java"){
-    val executer = new TFModelExecutioner()
+    val executer = new TFModelExecutor()
     val modelPath = "/home/houssam/externship/mmlspark/src/tensorflow-model/src/test/LabelImage_data/inception5h"
     val graphFile = "tensorflow_inception_graph.pb"
     val labelFile = "imagenet_comp_graph_label_strings.txt"
@@ -46,7 +46,7 @@ class TensorflowSuite extends TestBase {
     val labelsv3 = "imagenet_slim_labels.txt"
     val pineapplePath = "/home/houssam/externship/mmlspark/src/tensorflow-model/src/test/LabelImage_data/olpineapple.jpeg"
     val jackfruit = "/home/houssam/externship/mmlspark/src/tensorflow-model/src/test/LabelImage_data/jackfruit.jpg"
-    val executer = new TFModelExecutioner()
+    val executer = new TFModelExecutor()
 
     executer.main(Array[String](inceptionv3, pineapplePath, graphv3, labelsv3),
                   Array[Float](0f,0f,128f,255f),
