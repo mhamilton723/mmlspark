@@ -3,6 +3,7 @@
 
 package com.microsoft.ml.spark
 
+import jep.Jep
 import org.apache.commons.io.IOUtils
 import org.tensorflow.{DataType, Graph, Output, Session, Shape, Tensor, TensorFlow => tf}
 import org.tensorflow.types.UInt8
@@ -50,29 +51,28 @@ class TensorflowTrainerSuite extends TestBase {
     assert(result2.doubleValue() === 2)
   }
 
-
   test("linear regression") {
     val g = new Graph
     val b = new TensorflowGraphBuilder(g)
     val s = new Session(g)
 
-    println(new String(tf.registeredOpList()))
-
-
+    //println(new String(tf.registeredOpList()))
     val x = b.placeholder("x", Shape.scalar(), classOf[java.lang.Double])
     val m = b.variable("m", Shape.scalar(), classOf[java.lang.Double])
     val mInit = b.assign(b.constant("mInit", 3.0), m)
     val yHat = b.mul(x,m)
+    val y = b.placeholder("y", Shape.scalar(), classOf[java.lang.Double])
+    val loss = b.square(b.sub(yHat, y))
+    val grad = b.gradient(loss, m)
 
     s.runner().fetch(mInit).run()
     val result = s.runner()
       .feed(x, Tensor.create(2.0, classOf[java.lang.Double]))
-      .fetch(yHat).run().get(0)
-
+      .feed(y, Tensor.create(100.0, classOf[java.lang.Double]))
+      .fetch(grad).run().get(0)
 
     println(result.doubleValue())
 
+
   }
-
-
 }

@@ -23,6 +23,10 @@ class TensorflowGraphBuilder(graph: Graph) {
 
   def sub[T](x: Output[T], y: Output[T]): Output[T] = binaryOp("Sub", x, y)
 
+  def gradient[T](x: Output[T], y: Output[T]): Output[T] = binaryOp("Gradients", x, y)
+
+  def square[T](x: Output[T]): Output[T] = unaryOp("Square", x)
+
   def mul[T](x: Output[T], y: Output[T]): Output[T] = binaryOp("Mul", x, y)
 
   def identity[T](x: Output[T]): Output[T] = unaryOp("Identity", x)
@@ -74,7 +78,6 @@ class TensorflowGraphBuilder(graph: Graph) {
 
   def constant(name: String, value: Double): Output[java.lang.Double] = this.constant(name, value, classOf[java.lang.Double])
 
-
   def constant(name: String, value: Array[Int]): Output[Integer] = this.constant(name, value, classOf[Integer])
 
   def constant(name: String, value: Array[Double]): Output[java.lang.Double] = this.constant(name, value, classOf[java.lang.Double])
@@ -89,4 +92,5 @@ class TensorflowGraphBuilder(graph: Graph) {
 
   private def binaryOp3[T, U, V](`type`: String, in1: Output[U], in2: Output[V]): Output[T] =
     g.opBuilder(`type`, `type`).addInput(in1).addInput(in2).build.output[T](0)
+
 }
