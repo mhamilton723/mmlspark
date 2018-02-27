@@ -3,19 +3,19 @@
 
 package com.microsoft.ml.spark
 
-import org.apache.spark.SparkException
+import com.microsoft.ml.spark.core.test.base.TestBase
 import org.apache.spark.sql.functions.{current_timestamp, lit}
+import org.apache.spark.SparkException
 
 class PowerBiSuite extends TestBase with FileReaderUtils {
 
   lazy val url = sys.env("MML_POWERBI_URL")
   val df = session
-    .createDataFrame(Seq(
-      (Some(0), "a"),
-      (Some(1), "b"),
-      (Some(2), "c"),
-      (Some(3), ""),
-      (None, "bad_row")))
+    .createDataFrame(Seq((Some(0), "a"),
+                         (Some(1), "b"),
+                         (Some(2), "c"),
+                         (Some(3), ""),
+                         (None, "bad_row")))
     .toDF("bar", "foo")
     .withColumn("baz", current_timestamp())
   val bigdf = (1 to 5).foldRight(df) { case (_, ldf) => ldf.union(df) }.repartition(2)
