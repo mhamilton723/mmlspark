@@ -3,17 +3,16 @@
 
 package com.microsoft.ml.spark.codegen
 
-import Config._
-import DocGen._
-import WrapperClassDoc._
-
-import scala.util.matching.Regex
 import java.util.regex.Pattern
 
-import com.microsoft.ml.spark.core.env.FileUtilities._
-import com.microsoft.ml.spark.core.env.FileUtilities.File
-import org.apache.commons.io.FilenameUtils._
+import com.microsoft.ml.spark.codegen.Config._
+import com.microsoft.ml.spark.codegen.DocGen._
+import com.microsoft.ml.spark.codegen.WrapperClassDoc._
+import com.microsoft.ml.spark.core.env.FileUtilities.{File, _}
 import org.apache.commons.io.FileUtils
+import org.apache.commons.io.FilenameUtils._
+
+import scala.util.matching.Regex
 
 object CodeGen {
 
