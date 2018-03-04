@@ -17,9 +17,8 @@ object SubProjects {
     "codegen",
     "lib",
     "io",
-    "image-transformer",
     "cntk",
-    "image-featurizer",
+    "opencv",
     "lightgbm")
 }
 
@@ -157,8 +156,9 @@ object Extras {
     // For convenience, import the main package in a scala console
     initialCommands in (ThisBuild, console) := "import com.microsoft.ml.spark._",
     // Use the above commands
-    commands in ThisBuild ++= newCommands
-    ) ++ testOpts
+    commands in ThisBuild ++= newCommands,
+    updateOptions := updateOptions.value.withCachedResolution(true)
+  ) ++ testOpts
 
   def rootSettings =
     defaultSettings ++

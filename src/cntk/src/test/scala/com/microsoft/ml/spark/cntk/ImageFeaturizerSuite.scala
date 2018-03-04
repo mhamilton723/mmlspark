@@ -1,12 +1,11 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in project root for information.
 
-package com.microsoft.ml.spark
+package com.microsoft.ml.spark.cntk
 
 import java.net.URI
 
 import com.microsoft.ml.spark.Readers.implicits._
-import com.microsoft.ml.spark.cntk.CNTKTestUtils
 import com.microsoft.ml.spark.core.env.FileUtilities.File
 import com.microsoft.ml.spark.core.schema.ImageSchema
 import com.microsoft.ml.spark.core.test.base.TestBase

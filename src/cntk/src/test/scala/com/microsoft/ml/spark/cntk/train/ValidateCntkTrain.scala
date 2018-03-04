@@ -7,8 +7,8 @@ import java.io.File
 import java.net.URI
 
 import com.microsoft.ml.spark.Readers.implicits._
-import com.microsoft.ml.spark.UnrollImage
 import com.microsoft.ml.spark.core.test.base.TestBase
+import com.microsoft.ml.spark.opencv.UnrollImage
 import org.apache.commons.io.FileUtils
 import org.apache.spark.ml.feature.OneHotEncoder
 import org.apache.spark.ml.linalg.Vectors

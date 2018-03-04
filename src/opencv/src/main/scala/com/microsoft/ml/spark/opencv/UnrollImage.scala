@@ -1,7 +1,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in project root for information.
 
-package com.microsoft.ml.spark
+package com.microsoft.ml.spark.opencv
 
 import com.microsoft.ml.spark.core.contracts.{HasInputCol, HasOutputCol, MMLParams}
 import com.microsoft.ml.spark.core.schema.ImageSchema._
@@ -53,17 +53,13 @@ class UnrollImage(val uid: String) extends Transformer with HasInputCol with Has
 
   def this() = this(Identifiable.randomUID("UnrollImage"))
 
-  import com.microsoft.ml.spark.UnrollImage._
-
   setDefault(inputCol -> "image", outputCol -> (uid + "_output"))
 
   override def transform(dataset: Dataset[_]): DataFrame = {
     val df = dataset.toDF
     assert(isImage(df, $(inputCol)), "input column should have Image type")
 
-    val func = unroll(_)
-    val unrollUDF = udf(func)
-
+    val unrollUDF = udf(UnrollImage.unroll _)
     df.withColumn($(outputCol), unrollUDF(df($(inputCol))))
   }
 
