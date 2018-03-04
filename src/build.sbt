@@ -49,8 +49,8 @@ lazy val lightgbm = project
   .settings(Extras.defaultSettings)
   .dependsOn(core % fullDependency, lib % fullDependency)
 
-
 val aggregationDeps = "compile->compile;optional"
+
 lazy val MMLSpark = (project in file("."))
   .settings(
     Extras.defaultSettings,

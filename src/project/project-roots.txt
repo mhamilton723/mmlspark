@@ -2,8 +2,7 @@ core
 codegen
 lib
 io
-image-transformer
 cntk
-image-featurizer
+opencv
 lightgbm
 .

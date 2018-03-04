@@ -1,7 +1,7 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in project root for information.
 
-package com.microsoft.ml.spark
+package com.microsoft.ml.spark.opencv
 
 import com.microsoft.ml.spark.core.contracts.{HasInputCol, HasOutputCol, MMLParams}
 import com.microsoft.ml.spark.core.env.InternalWrapper
@@ -265,7 +265,7 @@ object ImageTransformer extends DefaultParamsReadable[ImageTransformer] {
 class ImageTransformer(val uid: String) extends Transformer
   with HasInputCol with HasOutputCol with MMLParams {
 
-  import com.microsoft.ml.spark.ImageTransformer._
+  import ImageTransformer._
 
   def this() = this(Identifiable.randomUID("ImageTransformer"))
 

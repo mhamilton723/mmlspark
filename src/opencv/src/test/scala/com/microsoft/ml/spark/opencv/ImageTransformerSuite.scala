@@ -1,23 +1,21 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in project root for information.
 
-package com.microsoft.ml.spark
+package com.microsoft.ml.spark.opencv
 
 import java.awt.GridLayout
 import java.nio.file.Paths
 import javax.swing._
 
-import org.apache.spark.ml.linalg.DenseVector
-import org.apache.spark.sql.DataFrame
-import org.opencv.core.{Mat, MatOfByte}
-import org.opencv.imgcodecs.Imgcodecs
-import org.opencv.imgproc.Imgproc
-import org.apache.spark.sql.Row
 import com.microsoft.ml.spark.Readers.implicits._
 import com.microsoft.ml.spark.core.test.base.LinuxOnly
 import com.microsoft.ml.spark.core.test.fuzzing.{TestObject, TransformerFuzzing}
-import org.apache.spark.sql.SaveMode
 import org.apache.commons.io.FileUtils
+import org.apache.spark.ml.linalg.DenseVector
+import org.apache.spark.sql.{DataFrame, Row, SaveMode}
+import org.opencv.core.{Mat, MatOfByte}
+import org.opencv.imgcodecs.Imgcodecs
+import org.opencv.imgproc.Imgproc
 
 trait ImageTestUtils {
   lazy val groceriesDirectory = "/Images/Grocery/"
