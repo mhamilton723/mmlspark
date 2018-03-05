@@ -58,7 +58,7 @@ object SparkSessionFactory {
         sess.sparkContext.setLogLevel(logLevel)
         session = Some(sess)
       }
-      session.get
+      session.get.newSession()
     }
   }
 
