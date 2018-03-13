@@ -1,9 +1,12 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in project root for information.
 
-package com.microsoft.ml.spark
+package com.microsoft.ml.spark.stages.text
 
-import com.microsoft.ml.spark.schema.DatasetExtensions
+import com.microsoft.ml.spark.core.contracts.{HasInputCol, HasOutputCol, MMLParams}
+import com.microsoft.ml.spark.core.schema.DatasetExtensions
+import com.microsoft.ml.spark.core.serialize.params.ArrayParam
+import org.apache.spark.ml.NamespaceInjections.pipelineModel
 import org.apache.spark.ml._
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.param._
@@ -47,7 +50,7 @@ class MultiNGram(override val uid: String)
     val models = getLengths.zip(intermediateOutputCols).map { case (n, out) =>
       new NGram().setN(n).setInputCol(getInputCol).setOutputCol(out)
     }
-    val intermediateDF = NamespaceInjections.pipelineModel(models).transform(df)
+    val intermediateDF = pipelineModel(models).transform(df)
     intermediateDF.map {row =>
       val mergedNGrams = intermediateOutputCols
         .map(col => row.getAs[mutable.WrappedArray[String]](col))
