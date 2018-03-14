@@ -30,7 +30,7 @@ def readImages(sparkSession, path, recursive = False, sampleRatio = 1.0, inspect
         for details
     """
     ctx = SparkContext.getOrCreate()
-    reader = ctx._jvm.com.microsoft.ml.spark.io.image.ImageReader
+    reader = ctx._jvm.com.microsoft.ml.spark.IO.image.ImageReader
     sql_ctx = pyspark.SQLContext.getOrCreate(ctx)
     jsession = sql_ctx.sparkSession._jsparkSession
     jresult = reader.read(path, recursive, jsession, float(sampleRatio), inspectZip, seed)
