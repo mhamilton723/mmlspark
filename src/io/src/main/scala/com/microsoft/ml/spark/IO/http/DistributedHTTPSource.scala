@@ -403,6 +403,10 @@ class DistributedHTTPSourceProvider extends StreamSourceProvider with DataSource
 
     parameters.get("deployLoadBalancer") match {
       case Some(s) if s.toBoolean =>
+        parameters.get("deployLoadBalancer") match {
+              case Some(s) if s.toBoolean => AzureLoadBalancer.deployFromParameters(parameters)
+              case _ =>
+        }
         //AzureLoadBalancer.deployFromParameters(parameters)
         throw new NotImplementedError("Support for automatic deployment coming soon")
       case _ =>

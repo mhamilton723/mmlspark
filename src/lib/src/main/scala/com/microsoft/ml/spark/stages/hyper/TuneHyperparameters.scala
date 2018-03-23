@@ -83,7 +83,7 @@ class TuneHyperparameters(override val uid: String) extends Estimator[TuneHyperp
   private def getExecutionContext: ExecutionContext = {
     getParallelism match {
       case 1 =>
-        ExecutionContext.fromExecutorService(MoreExecutors.sameThreadExecutor())
+        ExecutionContext.fromExecutor(MoreExecutors.directExecutor())
       case n =>
         val keepAliveSeconds = 60L
         val prefix = s"${this.getClass.getSimpleName}-thread-pool"
