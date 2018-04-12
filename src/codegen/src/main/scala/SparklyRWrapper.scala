@@ -72,10 +72,12 @@ abstract class SparklyRWrapper(entryPoint: PipelineStage,
       if (paramDefault.toLowerCase.contains(param.parent.toLowerCase)) "NULL"
       else getRDefault(paramDefault,
                        param.getClass.getSimpleName,
-                       (try {
-                          entryPoint.getParam(param.name).w(paramDefault)
-                          true
-                        } catch { case e: Exception => false }))
+                       try {
+                         entryPoint.getParam(param.name).w(paramDefault)
+                         true
+                       } catch {
+                         case _: Exception => false
+                       })
     }
   }
 

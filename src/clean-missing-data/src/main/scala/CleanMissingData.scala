@@ -145,7 +145,7 @@ class CleanMissingDataModel(val uid: String,
         } else {
           Some(dataset(io._1).as(io._2))
         }).toList
-    val addedCols = dataset.select((datasetCols ::: datasetInputCols):_*)
+    val addedCols = dataset.select(datasetCols ::: datasetInputCols:_*)
     addedCols.na.fill(replacementValues)
   }
 

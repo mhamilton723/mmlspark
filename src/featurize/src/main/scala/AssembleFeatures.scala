@@ -359,19 +359,16 @@ class AssembleFeaturesModel(val uid: String,
 
             // Convert all columns to same type double to feed them as a vector to the learner
             dataType match {
-              case _ @ (dataType: DataType) if (AssembleFeaturesUtilities.isNumeric(dataType)) => {
+              case _ @ (dataType: DataType) if AssembleFeaturesUtilities.isNumeric(dataType) =>
                 Seq(dataset(col),
                   dataset(col).cast(DoubleType).as(tmpRenamedCols, dataset.schema(col).metadata))
-              }
-              case _: DoubleType => {
+              case _: DoubleType =>
                 Seq(dataset(col),
                   dataset(col).as(tmpRenamedCols, dataset.schema(col).metadata))
-              }
-              case _ @ (dataType: DataType) if dataType.typeName == "vector" || dataType.isInstanceOf[VectorUDT] => {
+              case _ @ (dataType: DataType) if dataType.typeName == "vector" || dataType.isInstanceOf[VectorUDT] =>
                 Seq(dataset(col),
                   dataset(col).as(tmpRenamedCols, dataset.schema(col).metadata))
-              }
-              case _ @ (dataType: DataType) if dataType == TimestampType => {
+              case _ @ (dataType: DataType) if dataType == TimestampType =>
                 val extractTimeFeatures =
                   udf((col: Timestamp) => {
                         val localDate = col.toLocalDateTime
@@ -385,10 +382,9 @@ class AssembleFeaturesModel(val uid: String,
                                         localDate.get(ChronoField.MINUTE_OF_HOUR).toDouble,
                                         localDate.get(ChronoField.SECOND_OF_MINUTE).toDouble))
                       })
-                  Seq(dataset(col),
-                      extractTimeFeatures(dataset(col)).as(tmpRenamedCols, dataset.schema(col).metadata))
-              }
-              case _ @ (dataType: DataType) if dataType == DateType => {
+                Seq(dataset(col),
+                    extractTimeFeatures(dataset(col)).as(tmpRenamedCols, dataset.schema(col).metadata))
+              case _ @ (dataType: DataType) if dataType == DateType =>
                 val extractTimeFeatures = udf((col: Date) => {
                   // Local date has time information masked out, so we don't generate those columns
                   val localDate = col.toLocalDate
@@ -400,8 +396,7 @@ class AssembleFeaturesModel(val uid: String,
                 })
                 Seq(dataset(col),
                   extractTimeFeatures(dataset(col)).as(tmpRenamedCols, dataset.schema(col).metadata))
-              }
-              case imageType if imageType == ImageSchema.columnSchema => {
+              case imageType if imageType == ImageSchema.columnSchema =>
                 val extractImageFeatures = udf((row: Row) => {
                   val image  = ImageSchema.getBytes(row).map(_.toDouble)
                   val height = ImageSchema.getHeight(row).toDouble
@@ -410,7 +405,6 @@ class AssembleFeaturesModel(val uid: String,
                 })
                 Seq(dataset(col),
                     extractImageFeatures(dataset(col)).as(tmpRenamedCols, dataset.schema(col).metadata))
-              }
               case default => Seq(dataset(col))
             }
           }
