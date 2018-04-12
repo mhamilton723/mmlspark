@@ -3,15 +3,15 @@
 
 package com.microsoft.ml.spark
 
-import org.apache.spark.sql.{DataFrame, Dataset}
-import org.apache.spark.ml.Transformer
-import org.apache.spark.ml.param._
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types._
 import java.sql.Timestamp
 
+import com.microsoft.ml.spark.core.contracts.MMLParams
+import org.apache.spark.ml.Transformer
+import org.apache.spark.ml.param._
 import org.apache.spark.ml.util.{DefaultParamsReadable, Identifiable}
-import schema._
+import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
+import org.apache.spark.sql.{DataFrame, Dataset}
 
 /** DataConversion object. */
 object DataConversion extends DefaultParamsReadable[DataConversion]

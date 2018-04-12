@@ -3,10 +3,13 @@
 
 package com.microsoft.ml.spark
 
+import com.microsoft.ml.spark.core.test.base.TestBase
+import com.microsoft.ml.spark.core.test.fuzzing.{TestObject, TransformerFuzzing}
 import org.apache.spark.ml.util.MLReadable
-import org.apache.spark.sql.{DataFrame, Column}
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions.udf
+import org.scalatest.Assertion
 
 class UDFTransformerSuite extends TestBase with TransformerFuzzing[UDFTransformer] {
   val baseDF = makeBasicDF()

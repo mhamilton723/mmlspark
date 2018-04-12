@@ -3,8 +3,9 @@
 
 package com.microsoft.ml.spark
 
-import org.apache.spark.SparkException
+import com.microsoft.ml.spark.core.test.base.TestBase
 import org.apache.spark.sql.functions.{current_timestamp, lit}
+import org.apache.spark.SparkException
 
 class PowerBiSuite extends TestBase with FileReaderUtils {
 

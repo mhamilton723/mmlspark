@@ -7,8 +7,11 @@ import java.io._
 import java.sql.{Date, Timestamp}
 import java.time.temporal.ChronoField
 
-import com.microsoft.ml.spark.schema.DatasetExtensions._
-import com.microsoft.ml.spark.schema.{CategoricalColumnInfo, DatasetExtensions, ImageSchema}
+import com.microsoft.ml.spark.core.contracts.{HasFeaturesCol, MMLParams}
+import com.microsoft.ml.spark.core.schema.DatasetExtensions._
+import com.microsoft.ml.spark.core.schema.{DatasetExtensions, ImageSchema}
+import com.microsoft.ml.spark.core.serialize.{ConstructorReadable, ConstructorWritable}
+import com.microsoft.ml.spark.schema.CategoricalColumnInfo
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.linalg.SQLDataTypes.VectorType

@@ -3,9 +3,11 @@
 
 package com.microsoft.ml.spark
 
+import com.microsoft.ml.spark.core.contracts.Wrappable
+import com.microsoft.ml.spark.core.serialize.params.PipelineStageParam
 import org.apache.spark.sql.{DataFrame, Dataset}
 import org.apache.spark.ml.{Estimator, Pipeline, PipelineModel, PipelineStage}
-import org.apache.spark.ml.param.{ParamMap, PipelineStageParam, StringArrayParam}
+import org.apache.spark.ml.param.{ParamMap, StringArrayParam}
 import org.apache.spark.ml.util.{ComplexParamsReadable, ComplexParamsWritable, Identifiable}
 import org.apache.spark.sql.types._
 
