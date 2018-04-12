@@ -5,7 +5,8 @@ package com.microsoft.ml.spark.IO.powerbi
 
 import com.microsoft.ml.spark.core.test.base.TestBase
 import com.microsoft.ml.spark.IO.binary.FileReaderUtils
-import org.apache.spark.sql.functions.current_timestamp
+import org.apache.spark.SparkException
+import org.apache.spark.sql.functions.{current_timestamp, lit}
 
 class PowerBiSuite extends TestBase with FileReaderUtils {
 

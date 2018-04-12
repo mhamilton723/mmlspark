@@ -3,13 +3,12 @@
 
 package com.microsoft.ml.spark.IO.http
 
-import java.net.{InetAddress, InetSocketAddress, ServerSocket}
+import java.net.{InetSocketAddress, ServerSocket}
 import java.util.concurrent.Executors
 
 import com.microsoft.ml.spark.core.env.StreamUtilities.using
 import com.microsoft.ml.spark.core.test.base.TestBase
 import com.microsoft.ml.spark.core.test.fuzzing.{TestObject, TransformerFuzzing}
-import com.microsoft.ml.spark.IO.http.ServerUtils.createServer
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import org.apache.spark.ml.util.MLReadable
 import org.apache.spark.sql.{DataFrame, Dataset}
