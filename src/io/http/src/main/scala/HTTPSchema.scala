@@ -5,6 +5,7 @@ package com.microsoft.ml.spark
 
 import java.net.{SocketException, URI}
 
+import com.microsoft.ml.spark.schema.SparkBindings
 import org.apache.commons.io.IOUtils
 import org.apache.http._
 import org.apache.http.client.methods._
@@ -16,6 +17,8 @@ import org.apache.spark.sql.functions.{col, struct, typedLit, udf}
 import org.apache.spark.sql.types.{DataType, StringType}
 import org.apache.spark.sql.{Column, Row}
 
+import scala.collection.mutable
+
 case class HeaderData(name: String, value: String) {
 
   def this(h: Header) = {
@@ -23,24 +26,13 @@ case class HeaderData(name: String, value: String) {
   }
 
   def toHTTPCore: Header = new BasicHeader(name, value)
-
-  def toRow: Row = {
-    Row(name, value)
-  }
-
 }
 
-object HeaderData {
+object HeaderData extends SparkBindings[HeaderData]
 
-  def fromRow(r: Row): HeaderData = {
-    HeaderData(r.getString(0), r.getString(1))
-  }
-
-}
-
-case class EntityData(content: Array[Byte],
+case class EntityData(content: Seq[Byte],
                       contentEncoding: Option[HeaderData],
-                      contentLenth: Long,
+                      contentLength: Long,
                       contentType: Option[HeaderData],
                       isChunked: Boolean,
                       isRepeatable: Boolean,
@@ -51,7 +43,7 @@ case class EntityData(content: Array[Byte],
          try {
            IOUtils.toByteArray(e.getContent)
          } catch {
-           case _: SocketException => Array() //TODO investigate why sockets fail sometimes
+           case _: SocketException => Array[Byte]() //TODO investigate why sockets fail sometimes
          },
          Option(e.getContentEncoding).map(new HeaderData(_)),
          e.getContentLength,
@@ -62,9 +54,9 @@ case class EntityData(content: Array[Byte],
   }
 
   def toHttpCore: HttpEntity = {
-    val e = new ByteArrayEntity(content)
+    val e = new ByteArrayEntity(content.toArray)
     contentEncoding.foreach { ce => e.setContentEncoding(ce.toHTTPCore) }
-    assert(e.getContentLength == contentLenth)
+    assert(e.getContentLength == contentLength)
     contentType.foreach(h => e.setContentType(h.toHTTPCore))
     e.setChunked(isChunked)
     assert(e.isRepeatable == isRepeatable)
@@ -72,28 +64,9 @@ case class EntityData(content: Array[Byte],
     e
   }
 
-  def toRow: Row = {
-    Row(content, contentEncoding.map(_.toRow).orNull,
-      contentLenth, contentType.map(_.toRow).orNull,
-      isChunked, isRepeatable, isStreaming)
-  }
-
 }
 
-object EntityData {
-
-  def fromRow(r: Row): EntityData = {
-    EntityData(
-      r.getAs[Array[Byte]](0),
-      if (r.isNullAt(1)) None else Some(HeaderData.fromRow(r.getStruct(1))),
-      r.getLong(2),
-      if (r.isNullAt(3)) None else Some(HeaderData.fromRow(r.getStruct(3))),
-      r.getBoolean(4),
-      r.getBoolean(5),
-      r.getBoolean(6))
-  }
-
-}
+object EntityData extends SparkBindings[EntityData]
 
 case class StatusLineData(protocolVersion: ProtocolVersionData,
                           statusCode: Int,
@@ -105,24 +78,10 @@ case class StatusLineData(protocolVersion: ProtocolVersionData,
          s.getReasonPhrase)
   }
 
-  def toRow: Row = {
-    Row(protocolVersion.toRow, statusCode, reasonPhrase)
-  }
-
 }
 
-object StatusLineData {
 
-  def fromRow(r: Row): StatusLineData = {
-    StatusLineData(
-      ProtocolVersionData.fromRow(r.getStruct(0)),
-      r.getInt(1),
-      r.getString(2))
-  }
-
-}
-
-case class HTTPResponseData(headers: Array[HeaderData],
+case class HTTPResponseData(headers: Seq[HeaderData],
                             entity: EntityData,
                             statusLine: StatusLineData,
                             locale: String) {
@@ -134,44 +93,18 @@ case class HTTPResponseData(headers: Array[HeaderData],
          response.getLocale.toString)
   }
 
-  def toRow: Row = {
-    Row.apply(headers.map(_.toRow), entity.toRow, statusLine.toRow, locale)
-  }
-
 }
 
-object HTTPResponseData {
+object HTTPResponseData extends SparkBindings[HTTPResponseData]
 
-  def fromRow(r: Row): HTTPResponseData = {
-    HTTPResponseData(
-      r.getSeq[Row](0).map(HeaderData.fromRow).toArray,
-      EntityData.fromRow(r.getStruct(1)),
-      StatusLineData.fromRow(r.getStruct(2)),
-      r.getString(3))
-  }
-
-}
-
-case class ProtocolVersionData(protocol: String, major: Int, minor: Int) {
+case class ProtocolVersionData(protocol: String, major: Option[Integer], minor: Option[Integer]) {
 
   def this(v: ProtocolVersion) = {
-    this(v.getProtocol, v.getMajor, v.getMinor)
+    this(v.getProtocol, Option(int2Integer(v.getMajor)), Option(int2Integer(v.getMinor)))
   }
 
   def toHTTPCore: ProtocolVersion = {
-    new ProtocolVersion(protocol, major, minor)
-  }
-
-  def toRow: Row = {
-    Row(protocol, major, minor)
-  }
-
-}
-
-object ProtocolVersionData {
-
-  def fromRow(r: Row): ProtocolVersionData = {
-    ProtocolVersionData(r.getString(0), r.getInt(1), r.getInt(2))
+    new ProtocolVersion(protocol, major.orNull, minor.orNull)
   }
 
 }
@@ -188,19 +121,11 @@ case class RequestLineData(method: String,
 
 }
 
-object RequestLineData {
+object RequestLineData extends SparkBindings[RequestLineData]
 
-  def fromRow(row: Row): RequestLineData = {
-    RequestLineData(
-      row.getString(0),
-      row.getString(1),
-      if (row.isNullAt(2)) None else Some(ProtocolVersionData.fromRow(row.getStruct(2))))
-  }
-
-}
 
 case class HTTPRequestData(requestLine: RequestLineData,
-                           headers: Array[HeaderData],
+                           headers: Seq[HeaderData],
                            entity: Option[EntityData]) {
 
   def this(r: HttpRequestBase) = {
@@ -222,6 +147,9 @@ case class HTTPRequestData(requestLine: RequestLineData,
       case "POST"    => new HttpPost()
       case "PUT"     => new HttpPut()
       case "PATCH"   => new HttpPatch()
+      case s         =>
+        println(s)
+        throw new MatchError(s"$s not a Http method")
     }
     request match {
       case re: HttpEntityEnclosingRequestBase =>
@@ -233,28 +161,26 @@ case class HTTPRequestData(requestLine: RequestLineData,
     request.setURI(new URI(requestLine.uri))
     requestLine.protoclVersion.foreach(pv =>
       request.setProtocolVersion(pv.toHTTPCore))
-    request.setHeaders(headers.map(_.toHTTPCore))
+    request.setHeaders(headers.map(_.toHTTPCore).toArray)
     request
   }
 
 }
 
-object HTTPRequestData {
-
-  def fromRow(row: Row): HTTPRequestData = {
-    assert(row.schema == HTTPSchema.request)
+object HTTPRequestData extends SparkBindings[HTTPRequestData] {
+  override def fromRow(r: Row): HTTPRequestData = {
     HTTPRequestData(
-      RequestLineData.fromRow(row.getStruct(0)),
-      row.getSeq[Row](1).map(HeaderData.fromRow).toArray,
-      if (row.isNullAt(2)) None else Some(EntityData.fromRow(row.getStruct(2)))
-    )}
-
+      RequestLineData.fromRow(r.getStruct(0)),
+      r.getSeq[Row](1).map(HeaderData.fromRow),
+      Option(EntityData.fromRow(r.getStruct(2)))
+    )
+  }
 }
 
 object HTTPSchema {
 
-  val response: DataType = ScalaReflection.schemaFor[HTTPResponseData].dataType
-  val request: DataType = ScalaReflection.schemaFor[HTTPRequestData].dataType
+  val response: DataType = HTTPResponseData.schema
+  val request: DataType = HTTPRequestData.schema
 
   def to_http(urlCol: String, headersCol: String, methodCol: String, jsonEntityCol: String): Column = {
     to_http(col(urlCol), col(headersCol), col(methodCol), col(jsonEntityCol))
@@ -268,7 +194,7 @@ object HTTPSchema {
     if (e.content.isEmpty) {
       None
     } else {
-      Some(IOUtils.toString(e.content,
+      Some(IOUtils.toString(e.content.toArray,
         e.contentEncoding.map(h => h.value).getOrElse("UTF-8")))
     }
   }

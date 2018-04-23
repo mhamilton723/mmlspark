@@ -19,7 +19,7 @@ import spray.json.DefaultJsonProtocol._
 abstract class HTTPInputParser extends Transformer with HasOutputCol with HasInputCol {
   override def copy(extra: ParamMap): Transformer = defaultCopy(extra)
 
-  override def transformSchema(schema: StructType): StructType = schema.add(getOutputCol, HTTPSchema.request)
+  override def transformSchema(schema: StructType): StructType = schema.add(getOutputCol, HTTPRequestData.schema)
 
 }
 
@@ -75,11 +75,11 @@ class CustomInputParser(val uid: String) extends HTTPInputParser with ComplexPar
 
   val udfScala = new UDFParam(
       this, "udfScala", "User Defined Function to be applied to the DF input col",
-      { x: UserDefinedFunction => x.dataType == HTTPSchema.request })
+      { x: UserDefinedFunction => x.dataType == HTTPRequestData.schema })
 
   val udfPython = new UDPyFParam(
       this, "udfPython", "User Defined Python Function to be applied to the DF input col",
-      { x: UserDefinedPythonFunction => x.dataType == HTTPSchema.request })
+      { x: UserDefinedPythonFunction => x.dataType == HTTPRequestData.schema })
 
   val udfParams = Seq(udfScala, udfPython)
 

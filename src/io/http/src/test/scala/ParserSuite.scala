@@ -10,6 +10,8 @@ import org.apache.spark.sql.functions.{col, udf}
 import org.apache.spark.sql.types.{StringType, StructType}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
+import scala.collection.mutable
+
 trait ParserUtils extends WithServer {
 
   def sampleDf(spark: SparkSession): DataFrame = {
@@ -20,10 +22,10 @@ trait ParserUtils extends WithServer {
       .transform(df)
       .withColumn("unparsedOutput", udf({x: Int =>
         HTTPResponseData(
-          Array(),
+          new mutable.WrappedArray.ofRef[HeaderData](Array()),
           EntityData(
             "{\"foo\": \"here\"}".getBytes, None, 0, None, false, false, false),
-          StatusLineData(ProtocolVersionData("foo",1,1),200, "bar"),
+          StatusLineData(ProtocolVersionData("foo",Some(1),Some(1)),200, "bar"),
           "en")
         }).apply(col("data"))
       )

@@ -9,8 +9,11 @@ import java.util.concurrent.Executors
 import com.microsoft.ml.spark.StreamUtilities.using
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import org.apache.spark.ml.util.MLReadable
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.scalactic.Equality
+import org.apache.spark.sql.functions.{col, udf}
+import org.apache.spark.sql.types.StringType
 
 object ServerUtils {
   private def respond(request: HttpExchange, code: Int, response: String): Unit = synchronized {
@@ -32,8 +35,8 @@ object ServerUtils {
     }
   }
 
-  def createServer(host: String, port:Int, apiName: String): HttpServer = {
-    val server = HttpServer.create(new InetSocketAddress(host,port), 100)
+  def createServer(host: String, port: Int, apiName: String): HttpServer = {
+    val server = HttpServer.create(new InetSocketAddress(host, port), 100)
     server.createContext(s"/$apiName", new RequestHandler)
     server.setExecutor(Executors.newFixedThreadPool(100))
     server.start()
@@ -42,12 +45,12 @@ object ServerUtils {
 }
 
 trait WithFreeUrl {
-  val host              = "localhost"
-  val apiName           = "foo"
+  val host = "localhost"
+  val apiName = "foo"
   //Note this port should be used immediately to avoid race conditions
-  lazy val port: Int    =
+  lazy val port: Int =
     StreamUtilities.using(new ServerSocket(0))(_.getLocalPort).get
-  lazy val url:String   = {
+  lazy val url: String = {
     s"http://$host:$port/$apiName"
   }
 }
@@ -67,24 +70,36 @@ trait WithServer extends TestBase with WithFreeUrl {
 }
 
 class HTTPTransformerSuite extends TransformerFuzzing[HTTPTransformer]
-    with WithServer with ParserUtils {
+  with WithServer with ParserUtils {
+
+  /*test("foo") {
+    val df = sampleDf(session)
+    val colIndex = df.schema.fieldNames.indexOf("parsedInput")
+    val enc = RowEncoder(df.schema.add("response", HTTPRequestData.schema))
+    df.mapPartitions { it =>
+      it.map(r =>
+        Row.merge(r, Row(
+          HTTPRequestData.toRow(HTTPRequestData.fromRow(r.getStruct(colIndex)))))
+      )
+    }(enc).show()
+  }*/
 
   override def testObjects(): Seq[TestObject[HTTPTransformer]] = makeTestObject(
-      new HTTPTransformer().setInputCol("parsedInput").setOutputCol("out"), session)
+    new HTTPTransformer().setInputCol("parsedInput").setOutputCol("out"), session)
 
   override def reader: MLReadable[_] = HTTPTransformer
 
   //TODO this is needed because columns with a timestamp are added
-  override implicit lazy val dfEq: Equality[DataFrame] =  new Equality[DataFrame]{
+  override implicit lazy val dfEq: Equality[DataFrame] = new Equality[DataFrame] {
     def areEqual(a: DataFrame, bAny: Any): Boolean = bAny match {
-      case ds:Dataset[_] =>
+      case ds: Dataset[_] =>
         val b = ds.toDF()
         if (a.columns !== b.columns) {
           return false
         }
         val aSort = a.sort().collect()
         val bSort = b.sort().collect()
-        if (aSort.length != bSort.length){
+        if (aSort.length != bSort.length) {
           return false
         }
         true

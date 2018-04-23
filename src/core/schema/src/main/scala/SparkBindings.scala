@@ -10,9 +10,18 @@ import org.apache.spark.sql.types.StructType
 import scala.reflect.runtime.universe.TypeTag
 
 abstract class SparkBindings[T: TypeTag] {
-  lazy val enc: ExpressionEncoder[T] = ExpressionEncoder[T]().resolveAndBind()
-  lazy val rowEnc: ExpressionEncoder[Row] = RowEncoder(enc.schema).resolveAndBind()
-  lazy val schema: StructType = enc.schema
+  lazy val enc: ExpressionEncoder[T] = {
+    println(s"enc ${this.getClass.getName}")
+    ExpressionEncoder[T]().resolveAndBind()
+  }
+  lazy val rowEnc: ExpressionEncoder[Row] = {
+    println(s"row enc ${this.getClass.getName}")
+    RowEncoder(enc.schema).resolveAndBind()
+  }
+  lazy val schema: StructType = {
+    println(s"schema ${this.getClass.getName}")
+    enc.schema
+  }
 
   def fromRow(r: Row): T = {
     val ir = rowEnc.toRow(r)
@@ -24,13 +33,24 @@ abstract class SparkBindings[T: TypeTag] {
       val ir = rowEnc.toRow(r)
       Some(enc.fromRow(ir))
     } catch {
-      case _: Exception =>
+      case _: Throwable =>
         None //TODO figure out why this is needed for certain classes
     }
   }
 
   def toRow(v: T): Row = {
-    rowEnc.fromRow(enc.toRow(v))
+    try {
+      val ir = enc.toRow(v)
+      try{
+        rowEnc.fromRow(ir)
+      }catch{
+        case e: Throwable =>
+          throw e
+      }
+    }catch{
+      case e: Throwable =>
+        throw e
+    }
   }
 
 }

@@ -105,7 +105,8 @@ class HTTPTransformer(val uid: String)
             HTTPRequestData.fromRow(row.getStruct(colIndex)),
             Some(row))))
         responsesWithContext.map(rwc =>
-          Row.merge(rwc.context.get.asInstanceOf[Row], Row(rwc.response.toRow)))
+          Row.merge(rwc.context.get.asInstanceOf[Row],
+            Row(HTTPResponseData.toRow(rwc.response))))
       }
     }(enc)
   }
@@ -113,8 +114,8 @@ class HTTPTransformer(val uid: String)
   def copy(extra: ParamMap): HTTPTransformer = defaultCopy(extra)
 
   def transformSchema(schema: StructType): StructType = {
-    assert(schema(getInputCol).dataType == HTTPSchema.request)
-    schema.add(getOutputCol, HTTPSchema.response)
+    assert(schema(getInputCol).dataType == HTTPRequestData.schema)
+    schema.add(getOutputCol, HTTPResponseData.schema)
   }
 
 }
