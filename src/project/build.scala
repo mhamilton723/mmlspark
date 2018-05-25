@@ -146,7 +146,7 @@ object Extras {
     initialCommands in (ThisBuild, console) := "import com.microsoft.ml.spark._",
     // Use the above commands
     commands in ThisBuild ++= newCommands
-    ) ++ testOpts
+    ) ++ testOpts ++ Defaults.itSettings
 
   def rootSettings =
     defaultSettings ++
