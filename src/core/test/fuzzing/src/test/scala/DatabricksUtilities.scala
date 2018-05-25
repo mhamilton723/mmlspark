@@ -7,40 +7,38 @@ import java.io.FileInputStream
 import java.util.concurrent.TimeoutException
 
 import com.microsoft.ml.spark.FileUtilities.File
+import com.microsoft.ml.spark.SprayImplicits._
 import org.apache.commons.io.IOUtils
-import org.apache.http.client.methods._
+import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClientBuilder}
 import org.spark_project.guava.io.BaseEncoding
 import spray.json.DefaultJsonProtocol._
-import spray.json._
+import spray.json.{JsArray, JsObject, JsValue, _}
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future, blocking}
+import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.language.existentials
-import scala.util.{Failure, Success}
 
-
-/** Tests to validate fuzzing of modules. */
-class DatabricksTests extends TestBase {
-
+object DatabricksUtilities {
   lazy val client: CloseableHttpClient = HttpClientBuilder.create().build()
 
   // ADB Info
-  val region = "eastus2"
+  val region = "southcentralus"
   val token = sys.env("MML_ADB_TOKEN")
   val authValue: String = "Basic " + BaseEncoding.base64().encode(("token:" + token).getBytes("UTF-8"))
-  val clusterName = "Test Cluster 2"
+  val baseURL = s"https://$region.azuredatabricks.net/api/2.0/"
+  val clusterName = "Test Cluster"
   lazy val clusterId: String = getClusterIdByName(clusterName)
   val folder = "/MMLSparkBuild/Build1"
 
   //MMLSpark info
   val version = "com.microsoft.ml.spark:mmlspark_2.11:0.12.dev9+5.ge162a0c"
-  val baseURL = s"https://$region.azuredatabricks.net/api/2.0/"
-  val libraryString: String = Map("maven" -> Map(
-    "coordinates" -> version,
-    "repo" -> "https://mmlspark.azureedge.net/maven"
-  )).toJson.compactPrint
+  val libraries: String = List(
+    Map("maven" -> Map(
+      "coordinates" -> version,
+      "repo" -> "https://mmlspark.azureedge.net/maven")),
+    Map("pypi" ->  Map("package"->"nltk"))
+  ).toJson.compactPrint
 
   //Execution Params
   val timeoutInMillis: Int = 10 * 60 * 1000
@@ -75,11 +73,9 @@ class DatabricksTests extends TestBase {
 
   def getClusterIdByName(name: String): String = {
     val jsonObj = databricksGet("clusters/list")
-    val cluster = jsonObj.asJsObject
-      .fields("clusters").asInstanceOf[JsArray].elements
-      .filter(_.asJsObject
-        .fields("cluster_name").asInstanceOf[JsString].value == name).head
-    cluster.asJsObject.fields("cluster_id").asInstanceOf[JsString].value
+    val cluster = jsonObj.select[Array[JsValue]]("clusters")
+      .filter(_.select[String]("cluster_name") == name).head
+    cluster.select[String]("cluster_id")
   }
 
   def workspaceMkDir(dir: String): Unit = {
@@ -121,20 +117,19 @@ class DatabricksTests extends TestBase {
          |    "notebook_path": "$notebookPath",
          |    "base_parameters": []
          |  },
-         |  "libraries": [$libraryString]
+         |  "libraries": $libraries
          |}
       """.stripMargin
 
-    databricksPost("jobs/runs/submit", body)
-      .asJsObject().fields("run_id").asInstanceOf[JsNumber].value.toInt
+    databricksPost("jobs/runs/submit", body).select[Int]("run_id")
   }
 
   private def getRunStatuses(runId: Int): (String, Option[String]) = {
     val runObj = databricksGet(s"jobs/runs/get?run_id=$runId")
-    val stateObj = runObj.asJsObject.fields("state").asJsObject
-    val lifeCycleState = stateObj.fields("life_cycle_state").asInstanceOf[JsString].value
+    val stateObj = runObj.select[JsObject]("state")
+    val lifeCycleState = stateObj.select[String]("life_cycle_state")
     if (lifeCycleState == "TERMINATED") {
-      val resultState = stateObj.fields("result_state").asInstanceOf[JsString].value
+      val resultState = stateObj.select[String]("result_state")
       (lifeCycleState, Some(resultState))
     } else {
       (lifeCycleState, None)
@@ -143,11 +138,8 @@ class DatabricksTests extends TestBase {
 
   def getRunUrlAndNBName(runId: Int): (String, String) = {
     val runObj = databricksGet(s"jobs/runs/get?run_id=$runId").asJsObject()
-    val url = runObj.fields("run_page_url")
-      .asInstanceOf[JsString].value
-    val nbName = runObj.fields("task").asJsObject()
-      .fields("notebook_task").asJsObject
-      .fields("notebook_path").convertTo[String]
+    val url = runObj.select[String]("run_page_url")
+    val nbName = runObj.select[String]("task.notebook_task.notebook_path")
     (url, nbName)
   }
 
@@ -206,64 +198,14 @@ class DatabricksTests extends TestBase {
     databricksGet("jobs/runs/list?active_only=true&limit=1000")
       .asJsObject.fields.get("runs").foreach { runs =>
       runs.asInstanceOf[JsArray].elements.foreach { e =>
-        val cid = e.asJsObject.fields("cluster_instance").asJsObject.fields("cluster_id").convertTo[String]
+        val cid = e.select[String]("cluster_instance.cluster_id")
         if (cid == clusterId) {
-          val rid = e.asJsObject.fields("run_id").convertTo[Int]
+          val rid = e.select[Int]("run_id")
           println(s"Cancelling run $rid")
           cancelRun(rid)
         }
       }
     }
-  }
-
-  test("Submit failing job") {
-    val jobNum = submitRun("/SampleJobs/Job1")
-    assertThrows[RuntimeException](monitorJob(jobNum))
-  }
-
-  test("Submit successful job") {
-    val jobNum = submitRun("/SampleJobs/Job2")
-    monitorJob(jobNum)
-  }
-
-  test("get library status") {
-    val libraryObj = databricksGet(s"libraries/cluster-status?cluster_id=$clusterId")
-    println(libraryObj)
-  }
-
-  test("get jobs") {
-    val jobs = databricksGet("jobs/runs/list")
-    println(jobs)
-  }
-
-  test("Upload and run jobs") {
-    workspaceRmDir(folder)
-    workspaceMkDir(folder)
-    val jobIds = notebookFiles.map(uploadAndSubmitNotebook)
-    println(s"Submitted ${jobIds.length} for execution")
-    try {
-      val monitors = jobIds.map(monitorJob(_, timeout = timeoutInMillis))
-      println(s"Monitoring Jobs...")
-      val failures = monitors
-        .map(Await.ready(_, Duration.Inf).value.get)
-        .filter(_.isFailure)
-      assert(failures.isEmpty)
-    } catch {
-      case t: Throwable =>
-        jobIds.foreach { jid =>
-          println(s"Cancelling job $jid")
-          cancelRun(jid)
-        }
-        throw t
-    }
-  }
-
-  test("clean up") {
-    workspaceRmDir(folder)
-  }
-
-  test("cancel all jobs") {
-    cancelAllJobs(clusterId)
   }
 
 }
