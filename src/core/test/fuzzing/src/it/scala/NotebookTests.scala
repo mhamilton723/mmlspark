@@ -14,10 +14,11 @@ class NotebookTests extends TestBase {
 
   test("Databricks Notebooks") {
     workspaceMkDir(folder)
+    println(s"Submitting jobs")
     val jobIds = notebookFiles.map(uploadAndSubmitNotebook)
-    println(s"Submitted ${jobIds.length} for execution")
+    println(s"Submitted ${jobIds.length} for execution: ${jobIds.toList}")
     try {
-      val monitors = jobIds.map(monitorJob(_, timeout = timeoutInMillis))
+      val monitors = jobIds.map(monitorJob(_, logLevel=2, timeout = timeoutInMillis))
       println(s"Monitoring Jobs...")
       val failures = monitors
         .map(Await.ready(_, Duration.Inf).value.get)

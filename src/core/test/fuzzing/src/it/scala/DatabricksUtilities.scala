@@ -26,7 +26,8 @@ object DatabricksUtilities {
   // ADB Info
   val region = "southcentralus"
   val token = sys.env("MML_ADB_TOKEN")
-  val authValue: String = "Basic " + BaseEncoding.base64().encode(("token:" + token).getBytes("UTF-8"))
+  val authValue: String = "Basic " + BaseEncoding.base64()
+    .encode(("token:" + token).getBytes("UTF-8"))
   val baseURL = s"https://$region.azuredatabricks.net/api/2.0/"
   val clusterName = "Test Cluster"
   lazy val clusterId: String = getClusterIdByName(clusterName)
@@ -35,7 +36,9 @@ object DatabricksUtilities {
   //MMLSpark info
   val topDir = new File(new File(getClass.getResource("/").toURI), "../../../../../../../")
   val showVersionScript = new File(topDir, "tools/runme/show-version")
-  val mmlVersion     = sys.env.getOrElse("MML_VERSION", Process(showVersionScript.toString).!!.trim)
+  val mmlVersion = sys.env.getOrElse("MML_VERSION", Process(showVersionScript.toString).!!.trim)
+  //val mmlVersion = "0.12.dev13" #Uncomment this line to test against a custom version
+  assert(mmlVersion != "0.0", s"This version $mmlVersion is not yet public")
   val scalaVersion = sys.env("SCALA_VERSION")
   val version = s"com.microsoft.ml.spark:mmlspark_$scalaVersion:$mmlVersion"
 
@@ -43,14 +46,14 @@ object DatabricksUtilities {
     Map("maven" -> Map(
       "coordinates" -> version,
       "repo" -> "https://mmlspark.azureedge.net/maven")),
-    Map("pypi" ->  Map("package"->"nltk"))
+    Map("pypi" -> Map("package" -> "nltk"))
   ).toJson.compactPrint
 
   //Execution Params
   val timeoutInMillis: Int = 10 * 60 * 1000
 
   val notebookFiles: Array[File] = Option(
-    new File(topDir,"BuildArtifacts/notebooks/hdinsight").getCanonicalFile.listFiles()
+    new File(topDir, "BuildArtifacts/notebooks/hdinsight").getCanonicalFile.listFiles()
   ).get
 
   def databricksGet(path: String): JsValue = {
@@ -145,6 +148,7 @@ object DatabricksUtilities {
   def getRunUrlAndNBName(runId: Int): (String, String) = {
     val runObj = databricksGet(s"jobs/runs/get?run_id=$runId").asJsObject()
     val url = runObj.select[String]("run_page_url")
+      .replaceAll("westus", region) //TODO this seems like an ADB bug
     val nbName = runObj.select[String]("task.notebook_task.notebook_path")
     (url, nbName)
   }
@@ -157,7 +161,13 @@ object DatabricksUtilities {
       var finalState: Option[String] = None
       var lifeCycleState: String = "Not Started"
       val startTime = System.currentTimeMillis()
-      while (finalState.isEmpty & (System.currentTimeMillis() - startTime) < timeout) {
+      val (url, nbName) = getRunUrlAndNBName(runId)
+      if (logLevel >= 1) println(s"Started Monitoring notebook $nbName, url: $url")
+
+      while (finalState.isEmpty &
+        (System.currentTimeMillis() - startTime) < timeout &
+        lifeCycleState != "INTERNAL_ERROR"
+      ) {
         val (lcs, fs) = getRunStatuses(runId)
         finalState = fs
         lifeCycleState = lcs
@@ -166,7 +176,6 @@ object DatabricksUtilities {
           Thread.sleep(interval.toLong)
         }
       }
-      val (url, nbName) = getRunUrlAndNBName(runId)
 
       val error = finalState match {
         case Some("SUCCESS") =>
@@ -174,6 +183,9 @@ object DatabricksUtilities {
           None
         case Some(state) =>
           Some(new RuntimeException(s"Notebook $nbName failed with state $state. " +
+            s"For more information check the run page: \n$url\n"))
+        case None if lifeCycleState == "INTERNAL_ERROR" =>
+          Some(new RuntimeException(s"Notebook $nbName failed with state $lifeCycleState. " +
             s"For more information check the run page: \n$url\n"))
         case None =>
           Some(new TimeoutException(s"Notebook $nbName timed out after $timeout ms," +

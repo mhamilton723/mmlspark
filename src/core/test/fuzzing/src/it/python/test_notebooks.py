@@ -4,22 +4,25 @@
 from nbconvert.preprocessors import ExecutePreprocessor
 from nbformat.notebooknode import NotebookNode
 from textwrap import dedent
-import re, os, subprocess, shutil, sys
+import re, os, subprocess, shutil, sys, time
 from nbformat import read as read_nb, NO_CONVERT
+from pyspark.sql import SparkSession
+import nose
 
+if __name__ == "__main__":
+    start= os.getcwd()
+    nb_directory = os.path.join(*([".."] * 7 + ["BuildArtifacts", "notebooks", "local"]))
+    os.chdir(nb_directory)
 
-nb_directory = os.path.join(*([".."] * 7 + ["BuildArtifacts", "notebooks", "local"]))
-os.chdir(nb_directory)
-
-mml_version = os.environ.get("MML_VERSION", subprocess.run(
-    ["../../../tools/runme/show-version"], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip())
+#mml_version = os.environ.get("MML_VERSION", subprocess.run(
+#    ["../../../tools/runme/show-version"], stdout=subprocess.PIPE).stdout.decode('utf-8').rstrip())
 # Clear MMLSPark from the ivycache
-if mml_version == "0.0":
-    print("Clearning mmlspark from the ivycache")
-    ivy_dirs = [f[0] for f in os.walk(os.path.join(os.environ["HOME"], ".ivy2")) if "mmlspark" in f[0]]
-    for dir in ivy_dirs:
-        if os.path.exists(dir):
-            shutil.rmtree(dir)
+#if mml_version == "0.0":
+#    print("Clearning mmlspark from the ivycache")
+#    ivy_dirs = [f[0] for f in os.walk(os.path.join(os.environ["HOME"], ".ivy2")) if "mmlspark" in f[0]]
+#    for dir in ivy_dirs:
+#        if os.path.exists(dir):
+#            shutil.rmtree(dir)
 
 preprocessor = ExecutePreprocessor(timeout=600, enabled=True, allow_errors=False)
 
@@ -52,15 +55,14 @@ class test_notebooks(object):
             spark = SparkSession.builder \\
                 .master("local[*]") \\
                 .appName("NotebookTestSuite") \\
-                .config("spark.jars.repositories", "{}") \\
-                .config("spark.jars.packages", "{}") \\
                 .getOrCreate()
             globals()["spark"] = spark
             globals()["sc"] = spark.sparkContext
-            """.format(repo, package)))
+            """))
         epilogue_node = NotebookNode(cell_type="code", source=dedent("""
             try:
-                spark.stop()
+                pass
+                #spark.stop()
             except:
                 pass
             """))
@@ -90,7 +92,10 @@ class test_notebooks(object):
         func.__doc__ = title
         setattr(cls, func.__name__, func )
 
-
 nbfiles = [test for test in os.listdir(".") if test.endswith(".ipynb")]
-for nbfile in nbfiles:
+for nbfile in nbfiles[0:2]:
     test_notebooks.add_nb(nbfile)
+
+if __name__ == "__main__":
+    print(os.getcwd())
+    nose.main(defaultTest=__name__, env={"NOSE_PROCESSES":2, 'NOSE_PROCESS_TIMEOUT': 600})

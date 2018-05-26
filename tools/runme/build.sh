@@ -113,11 +113,12 @@ _sbt_build() {
 
 _sbt_adb_notebooks() {
   show section "Running ADB Notebooks"
-  if [[ "$BUILDMODE" = "server" ]]; then
-    local token="$(__ az keyvault secret show --vault-name mmlspark-keys --name adb-token)"
-    token="${token##*\"value\": \"}"; token="${token%%\"*}"
-    export MML_ADB_TOKEN="$token"
-  fi
+  #if [[ "$BUILDMODE" = "server" ]]; then
+  local token="$(__ az keyvault secret show --vault-name mmlspark-keys --name adb-token)"
+  token="${token##*\"value\": \"}"; token="${token%%\"*}"
+  export MML_ADB_TOKEN="$token"
+  #fi
+  echo ${MML_ADB_TOKEN}
 
   local owd="$PWD"
   cd "$SRCDIR"
@@ -294,8 +295,8 @@ _full_build() {
   should publish storage && _upload_artifacts_to_storage
   # tests
   should test python     && @ "../pytests/auto-tests"
+  #should test foo        && _sbt_adb_notebooks
   should test foo     && _sbt_local_notebooks
-  should test foo        && _sbt_adb_notebooks
 
   # publish steps that should happen only for successful tests
   should publish docs    && _publish_docs
