@@ -6,6 +6,7 @@ package com.microsoft.ml.spark
 import spray.json.{JsArray, JsObject, JsValue, JsonFormat}
 
 import scala.language.existentials
+import scala.language.implicitConversions
 
 abstract class SprayOp
 

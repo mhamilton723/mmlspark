@@ -18,6 +18,7 @@ import spray.json.{JsArray, JsObject, JsValue, _}
 
 import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.language.existentials
+import scala.sys.process.Process
 
 object DatabricksUtilities {
   lazy val client: CloseableHttpClient = HttpClientBuilder.create().build()
@@ -33,11 +34,10 @@ object DatabricksUtilities {
 
   //MMLSpark info
   val projectDir = new File(new File(getClass.getResource("/").toURI), "../../../")
-  val showVersionScript = new File(projectDir, "../../tools/runme/show-version")
+  val showVersionScript = new File(projectDir, "../../../../tools/runme/show-version")
   val mmlVersion     = sys.env.getOrElse("MML_VERSION", Process(showVersionScript.toString).!!.trim)
   val scalaVersion = sys.env("SCALA_VERSION")
   val version = s"com.microsoft.ml.spark:mmlspark_$scalaVersion:$mmlVersion"
-  assert(version="foo")
 
   val libraries: String = List(
     Map("maven" -> Map(
