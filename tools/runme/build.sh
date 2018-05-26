@@ -113,6 +113,12 @@ _sbt_build() {
 
 _sbt_adb_notebooks() {
   show section "Running ADB Notebooks"
+  if [[ "$BUILDMODE" = "server" ]]; then
+    local token="$(__ az keyvault secret show --vault-name mmlspark-keys --name adb-token)"
+    token="${token##*\"value\": \"}"; token="${token%%\"*}"
+    export MML_ADB_TOKEN="$token"
+  fi
+
   local owd="$PWD"
   cd "$SRCDIR"
   local TESTS="$TESTS"
