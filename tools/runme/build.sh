@@ -294,8 +294,8 @@ _full_build() {
   should publish storage && _upload_artifacts_to_storage
   # tests
   should test python     && @ "../pytests/auto-tests"
-  _sbt_adb_notebooks
-  _sbt_local_notebooks
+  should test foo     && _sbt_local_notebooks
+  should test foo        && _sbt_adb_notebooks
 
   # publish steps that should happen only for successful tests
   should publish docs    && _publish_docs

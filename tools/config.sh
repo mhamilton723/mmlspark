@@ -141,6 +141,7 @@ deftag extended
   deftag buildserver extended
   deftag python extended
   deftag e2e extended
+  deftag foo extended
 deftag linuxonly
 # Tag definitions for $PUBLISH
 map deftag storage maven pip r docs demo docker
