@@ -111,22 +111,7 @@ object Extras {
                         "com.microsoft.ml.spark.test.tags." +
                           spec.substring(1)) })
 
-  val pythonITTask = TaskKey[Unit]("pyIt", "Run python tests.")
-
   def defaultSettings: Seq[Def.Setting[_]] = Seq(
-    pythonITTask := {
-      val s: TaskStreams = streams.value
-      val workdir = new File(sourceDirectory.value, "/it/python")
-      if (workdir.exists()) {
-        s.log.info(s"$workdir exists, running pyIt")
-        val out = Process(
-          "python -m nose --processes=4 --process-timeout=600 --nocapture",
-          new File(sourceDirectory.value, "/it/python")).!<
-        assert(out == 0)
-      }else{
-        s.log.info(s"$workdir does not exist, skipping pyIt")
-      }
-    },
     // Common stuff: defaults for all subprojects
     scalaVersion in ThisBuild := scalaVer,
     organization in ThisBuild := defaultOrg,

@@ -127,15 +127,6 @@ _sbt_adb_notebooks() {
   cd "$owd"
 }
 
-_sbt_local_notebooks() {
-  show section "Running local Notebooks"
-  local owd="$PWD"
-  cd "$SRCDIR"
-  local TESTS="$TESTS"
-  _sbt_run "core-test-fuzzing/pyIt"
-  cd "$owd"
-}
-
 _upload_package_to_storage() { # name, pkgdir, container
   show section "Publishing $1 Package"
   _ azblob upload-batch --source "$BUILD_ARTIFACTS/packages/$2" --destination "$3"
@@ -295,8 +286,8 @@ _full_build() {
   should publish storage && _upload_artifacts_to_storage
   # tests
   should test python     && @ "../pytests/auto-tests"
-  #should test foo        && _sbt_adb_notebooks
-  should test foo     && _sbt_local_notebooks
+  should test python     && @ "../pytests/notebook-tests"
+  should test e2e     && _sbt_adb_notebooks
 
   # publish steps that should happen only for successful tests
   should publish docs    && _publish_docs
