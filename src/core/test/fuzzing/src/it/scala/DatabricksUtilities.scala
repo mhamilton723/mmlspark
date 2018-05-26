@@ -33,8 +33,8 @@ object DatabricksUtilities {
   val folder = "/MMLSparkBuild/Build1"
 
   //MMLSpark info
-  val projectDir = new File(new File(getClass.getResource("/").toURI), "../../../")
-  val showVersionScript = new File(projectDir, "../../../../tools/runme/show-version")
+  val topDir = new File(new File(getClass.getResource("/").toURI), "../../../../../../../")
+  val showVersionScript = new File(topDir, "tools/runme/show-version")
   val mmlVersion     = sys.env.getOrElse("MML_VERSION", Process(showVersionScript.toString).!!.trim)
   val scalaVersion = sys.env("SCALA_VERSION")
   val version = s"com.microsoft.ml.spark:mmlspark_$scalaVersion:$mmlVersion"
@@ -50,7 +50,7 @@ object DatabricksUtilities {
   val timeoutInMillis: Int = 10 * 60 * 1000
 
   val notebookFiles: Array[File] = Option(
-    new File("./BuildArtifacts/notebooks/hdinsight").getCanonicalFile.listFiles()
+    new File(topDir,"BuildArtifacts/notebooks/hdinsight").getCanonicalFile.listFiles()
   ).get
 
   def databricksGet(path: String): JsValue = {

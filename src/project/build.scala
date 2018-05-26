@@ -1,11 +1,11 @@
 // Copyright (C) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in project root for information.
 
-import sbt._
+import sbt.{Def, _}
 import Keys._
+import sbt.util.Level
 
 import sys.process.Process
-
 import sbtassembly.AssemblyKeys._
 import sbtassembly.AssemblyPlugin.autoImport.assembly
 import sbtunidoc.ScalaUnidocPlugin.autoImport.ScalaUnidoc
@@ -111,7 +111,22 @@ object Extras {
                         "com.microsoft.ml.spark.test.tags." +
                           spec.substring(1)) })
 
-  def defaultSettings = Seq(
+  val pythonITTask = TaskKey[Unit]("pyIt", "Run python tests.")
+
+  def defaultSettings: Seq[Def.Setting[_]] = Seq(
+    pythonITTask := {
+      val s: TaskStreams = streams.value
+      val workdir = new File(sourceDirectory.value, "/it/python")
+      if (workdir.exists()) {
+        s.log.info(s"$workdir exists, running pyIt")
+        val out = Process(
+          "python -m nose --processes=4 --process-timeout=600 --nocapture",
+          new File(sourceDirectory.value, "/it/python")).!<
+        assert(out == 0)
+      }else{
+        s.log.info(s"$workdir does not exist, skipping pyIt")
+      }
+    },
     // Common stuff: defaults for all subprojects
     scalaVersion in ThisBuild := scalaVer,
     organization in ThisBuild := defaultOrg,
@@ -146,7 +161,8 @@ object Extras {
     initialCommands in (ThisBuild, console) := "import com.microsoft.ml.spark._",
     // Use the above commands
     commands in ThisBuild ++= newCommands
-    ) ++ testOpts ++ Defaults.itSettings
+    ) ++ testOpts ++ Defaults.itSettings ++
+    addCommandAlias("adbNotebookTests", "core-test-fuzzing/it:test")
 
   def rootSettings =
     defaultSettings ++

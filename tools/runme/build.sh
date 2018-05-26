@@ -270,7 +270,8 @@ _full_build() {
   should publish storage && _upload_artifacts_to_storage
   # tests
   should test python     && @ "../pytests/auto-tests"
-  should test python     && @ "../pytests/notebook-tests"
+  _sbt_run "core-test-fuzzing/it:test"
+  _sbt_run "core-test-fuzzing/pyIt"
 
   # publish steps that should happen only for successful tests
   should publish docs    && _publish_docs
