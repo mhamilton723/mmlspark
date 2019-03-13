@@ -3,8 +3,60 @@
 
 package com.microsoft.ml.spark
 
+import org.apache.spark.internal.{Logging=>SLogging}
 import org.apache.spark.ml.param._
 import org.apache.spark.ml.util.DefaultParamsWritable
+import org.apache.spark.sql.{Dataset, Encoders}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.{Duration, SECONDS}
+import scala.math.min
+
+trait LightGBMBase extends LightGBMParams
+  with SLogging {
+
+  protected def getTrainParams(dataset: Dataset[_],
+                               numWorkers: Int,
+                               categoricalIndexes: Array[Int]): TrainParams
+
+  def trainBooster(labelCol: String,
+                   featuresCol: String,
+                   dataset: Dataset[_]): LightGBMBooster = {
+    val numCoresPerExec = LightGBMUtils.getNumCoresPerExecutor(dataset)
+    val numExecutorCores = LightGBMUtils.getNumExecutorCores(dataset, numCoresPerExec)
+    val numPartitions = dataset.rdd.getNumPartitions
+    val numWorkers = min(numExecutorCores, numPartitions)
+    // Reduce number of partitions to number of executor cores if needed
+    val df = if (numWorkers < numPartitions){
+      dataset.toDF.coalesce(numWorkers)
+    } else {
+      dataset.toDF
+    }
+    val (inetAddress, port, future) =
+      LightGBMUtils.createDriverNodesThread(numWorkers, df, log, getTimeout)
+
+    /* Run a parallel job via map partitions to initialize the native library and network,
+     * translate the data to the LightGBM in-memory representation and train the models
+     */
+    val encoder = Encoders.kryo[LightGBMBooster]
+
+    val categoricalSlotIndexesArr = get(categoricalSlotIndexes).getOrElse(Array.empty[Int])
+    val categoricalSlotNamesArr = get(categoricalSlotNames).getOrElse(Array.empty[String])
+    val categoricalIndexes = LightGBMUtils.getCategoricalIndexes(df.schema, featuresCol,
+      categoricalSlotIndexesArr, categoricalSlotNamesArr)
+    val trainParams = getTrainParams(dataset, numWorkers, categoricalIndexes)
+    log.info(s"LightGBM parameters: ${trainParams.toString}")
+    val networkParams = NetworkParams(getDefaultListenPort, inetAddress, port)
+
+    val lightGBMBooster = df
+      .mapPartitions(TrainUtils.trainLightGBM(networkParams, labelCol, featuresCol, get(weightCol),
+        log, trainParams, numCoresPerExec))(encoder)
+      .reduce((booster1, _) => booster1)
+    // Wait for future to complete (should be done by now)
+    Await.result(future, Duration(getTimeout, SECONDS))
+    lightGBMBooster
+  }
+}
 
 /** Defines common parameters across all LightGBM learners.
   */

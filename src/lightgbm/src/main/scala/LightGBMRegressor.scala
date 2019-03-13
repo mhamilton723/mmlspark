@@ -37,7 +37,7 @@ object LightGBMRegressor extends DefaultParamsReadable[LightGBMRegressor]
 @InternalWrapper
 class LightGBMRegressor(override val uid: String)
   extends BaseRegressor[Vector, LightGBMRegressor, LightGBMRegressionModel]
-    with LightGBMParams {
+    with LightGBMBase {
   def this() = this(Identifiable.randomUID("LightGBMRegressor"))
 
   // Set default objective to be regression
@@ -56,43 +56,24 @@ class LightGBMRegressor(override val uid: String)
   def getTweedieVariancePower: Double = $(tweedieVariancePower)
   def setTweedieVariancePower(value: Double): this.type = set(tweedieVariancePower, value)
 
+  override protected def getTrainParams(dataset: Dataset[_],
+                                        numWorkers: Int,
+                                        categoricalIndexes: Array[Int]): TrainParams = {
+    RegressorTrainParams(getParallelism, getNumIterations, getLearningRate, getNumLeaves,
+      getObjective, getAlpha, getTweedieVariancePower, getMaxBin, getBaggingFraction, getBaggingFreq, getBaggingSeed,
+      getEarlyStoppingRound, getFeatureFraction, getMaxDepth, getMinSumHessianInLeaf, numWorkers, getModelString,
+      getVerbosity, categoricalIndexes, getBoostFromAverage, getBoostingType)
+  }
+
   /** Trains the LightGBM Regression model.
     *
     * @param dataset The input dataset to train.
     * @return The trained model.
     */
   override protected def train(dataset: Dataset[_]): LightGBMRegressionModel = {
-    val numCoresPerExec = LightGBMUtils.getNumCoresPerExecutor(dataset)
-    val numExecutorCores = LightGBMUtils.getNumExecutorCores(dataset, numCoresPerExec)
-    val numWorkers = min(numExecutorCores, dataset.rdd.getNumPartitions)
-    // Reduce number of partitions to number of executor cores if needed
-    val df = dataset.toDF().coalesce(numWorkers).cache()
-    val (inetAddress, port, future) =
-      LightGBMUtils.createDriverNodesThread(numWorkers, df, log, getTimeout)
-
-    /* Run a parallel job via map partitions to initialize the native library and network,
-     * translate the data to the LightGBM in-memory representation and train the models
-     */
-    val encoder = Encoders.kryo[LightGBMBooster]
-
-    val categoricalSlotIndexesArr = get(categoricalSlotIndexes).getOrElse(Array.empty[Int])
-    val categoricalSlotNamesArr = get(categoricalSlotNames).getOrElse(Array.empty[String])
-    val categoricalIndexes = LightGBMUtils.getCategoricalIndexes(df, getFeaturesCol,
-      categoricalSlotIndexesArr, categoricalSlotNamesArr)
-    val trainParams = RegressorTrainParams(getParallelism, getNumIterations, getLearningRate, getNumLeaves,
-      getObjective, getAlpha, getTweedieVariancePower, getMaxBin, getBaggingFraction, getBaggingFreq, getBaggingSeed,
-      getEarlyStoppingRound, getFeatureFraction, getMaxDepth, getMinSumHessianInLeaf, numWorkers, getModelString,
-      getVerbosity, categoricalIndexes, getBoostFromAverage, getBoostingType)
-    log.info(s"LightGBMRegressor parameters: ${trainParams.toString}")
-    val networkParams = NetworkParams(getDefaultListenPort, inetAddress, port)
-
-    val lightGBMBooster = df
-      .mapPartitions(TrainUtils.trainLightGBM(networkParams, getLabelCol, getFeaturesCol, get(weightCol),
-        log, trainParams, numCoresPerExec))(encoder)
-      .reduce((booster1, _) => booster1)
-    // Wait for future to complete (should be done by now)
-    Await.result(future, Duration(getTimeout, SECONDS))
-    new LightGBMRegressionModel(uid, lightGBMBooster, getLabelCol, getFeaturesCol, getPredictionCol)
+    new LightGBMRegressionModel(
+      uid, trainBooster(getLabelCol, getFeaturesCol, dataset),
+      getLabelCol, getFeaturesCol, getPredictionCol)
   }
 
   override def copy(extra: ParamMap): LightGBMRegressor = defaultCopy(extra)

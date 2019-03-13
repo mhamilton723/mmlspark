@@ -26,7 +26,7 @@ object LightGBMClassifier extends DefaultParamsReadable[LightGBMClassifier]
 @InternalWrapper
 class LightGBMClassifier(override val uid: String)
   extends ProbabilisticClassifier[Vector, LightGBMClassifier, LightGBMClassificationModel]
-  with LightGBMParams {
+  with LightGBMBase {
   def this() = this(Identifiable.randomUID("LightGBMClassifier"))
 
   // Set default objective to be binary classification
@@ -39,32 +39,9 @@ class LightGBMClassifier(override val uid: String)
   def getIsUnbalance: Boolean = $(isUnbalance)
   def setIsUnbalance(value: Boolean): this.type = set(isUnbalance, value)
 
-  /** Trains the LightGBM Classification model.
-    *
-    * @param dataset The input dataset to train.
-    * @return The trained model.
-    */
-  override protected def train(dataset: Dataset[_]): LightGBMClassificationModel = {
-    val numCoresPerExec = LightGBMUtils.getNumCoresPerExecutor(dataset)
-    val numExecutorCores = LightGBMUtils.getNumExecutorCores(dataset, numCoresPerExec)
-    val numWorkers = min(numExecutorCores, dataset.rdd.getNumPartitions)
-    // Reduce number of partitions to number of executor cores
-    val df = dataset.toDF().coalesce(numWorkers).cache()
-    val (inetAddress, port, future) =
-      LightGBMUtils.createDriverNodesThread(numWorkers, df, log, getTimeout)
-
-    /* Run a parallel job via map partitions to initialize the native library and network,
-     * translate the data to the LightGBM in-memory representation and train the models
-     */
-    val encoder = Encoders.kryo[LightGBMBooster]
-
-    val categoricalSlotIndexesArr = get(categoricalSlotIndexes).getOrElse(Array.empty[Int])
-    val categoricalSlotNamesArr = get(categoricalSlotNames).getOrElse(Array.empty[String])
-    val categoricalIndexes = LightGBMUtils.getCategoricalIndexes(df, getFeaturesCol,
-      categoricalSlotIndexesArr, categoricalSlotNamesArr)
-    /* The native code for getting numClasses is always 1 unless it is multiclass-classification problem
-     * so we infer the actual numClasses from the dataset here
-     */
+  override protected def getTrainParams(dataset: Dataset[_],
+                                        numWorkers: Int,
+                                        categoricalIndexes: Array[Int]): TrainParams = {
     val actualNumClasses = getNumClasses(dataset)
     val classes =
       if (getObjective == LightGBMConstants.binaryObjective) None
@@ -72,25 +49,28 @@ class LightGBMClassifier(override val uid: String)
     val metric =
       if (classes.isDefined) "multiclass"
       else "binary_logloss,auc"
-    val trainParams = ClassifierTrainParams(getParallelism, getNumIterations, getLearningRate, getNumLeaves,
+    ClassifierTrainParams(getParallelism, getNumIterations, getLearningRate, getNumLeaves,
       getMaxBin, getBaggingFraction, getBaggingFreq, getBaggingSeed, getEarlyStoppingRound,
       getFeatureFraction, getMaxDepth, getMinSumHessianInLeaf, numWorkers, getObjective, getModelString,
       getIsUnbalance, getVerbosity, categoricalIndexes, classes, metric, getBoostFromAverage, getBoostingType)
-    log.info(s"LightGBMClassifier parameters: ${trainParams.toString}")
-    val networkParams = NetworkParams(getDefaultListenPort, inetAddress, port)
+  }
 
-    val lightGBMBooster = df
-      .mapPartitions(TrainUtils.trainLightGBM(networkParams, getLabelCol, getFeaturesCol, get(weightCol),
-        log, trainParams, numCoresPerExec))(encoder)
-      .reduce((booster1, _) => booster1)
-    // Wait for future to complete (should be done by now)
-    Await.result(future, Duration(getTimeout, SECONDS))
+
+  /** Trains the LightGBM Classification model.
+    *
+    * @param dataset The input dataset to train.
+    * @return The trained model.
+    */
+  override protected def train(dataset: Dataset[_]): LightGBMClassificationModel = {
+    val lightGBMBooster = trainBooster(getLabelCol, getFeaturesCol, dataset)
+    val actualNumClasses = getNumClasses(dataset)
     new LightGBMClassificationModel(uid, lightGBMBooster, getLabelCol, getFeaturesCol,
       getPredictionCol, getProbabilityCol, getRawPredictionCol,
       if (isDefined(thresholds)) Some(getThresholds) else None, actualNumClasses)
   }
 
   override def copy(extra: ParamMap): LightGBMClassifier = defaultCopy(extra)
+
 }
 
 /** Model produced by [[LightGBMClassifier]]. */

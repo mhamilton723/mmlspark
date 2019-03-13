@@ -14,6 +14,7 @@ import org.apache.spark.{BlockManagerUtils, SparkEnv, TaskContext}
 import org.apache.spark.ml.PipelineModel
 import org.apache.spark.ml.attribute._
 import org.apache.spark.ml.linalg.SparseVector
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
 import org.slf4j.Logger
 
@@ -60,12 +61,12 @@ object LightGBMUtils {
     lightgbmlib.voidpp_value(boosterOutPtr)
   }
 
-  def getCategoricalIndexes(df: DataFrame,
+  def getCategoricalIndexes(schema: StructType,
                             featuresCol: String,
                             categoricalColumnIndexes: Array[Int],
                             categoricalColumnSlotNames: Array[String]): Array[Int]  = {
     val categoricalSlotNamesSet = HashSet(categoricalColumnSlotNames: _*)
-    val featuresSchema = df.schema(featuresCol)
+    val featuresSchema = schema(featuresCol)
     val metadata = AttributeGroup.fromStructField(featuresSchema)
     val categoricalIndexes =
       if (metadata.attributes.isEmpty) Array[Int]()
