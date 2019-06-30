@@ -153,9 +153,6 @@ setupTask := {
   getDatasetsTask.value
 }
 
-publishM2 := (publishM2 dependsOn packagePythonTask).value
-publishLocal := (publishLocal dependsOn packagePythonTask).value
-
 val publishBlob = TaskKey[Unit]("publishBlob", "publish the library to mmlspark blob")
 publishBlob := {
   val s = streams.value
