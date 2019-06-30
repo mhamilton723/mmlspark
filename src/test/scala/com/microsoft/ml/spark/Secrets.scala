@@ -35,5 +35,7 @@ object Secrets {
   lazy val powerbiURL: String = getSecret("powerbi-url")
   lazy val speechApiKey: String = getSecret("speech-api-key")
   lazy val visionApiKey: String = getSecret("vision-api-key")
+  lazy val adbToken: String = getSecret("adb-token")
+
 
 }
