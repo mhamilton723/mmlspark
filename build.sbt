@@ -92,7 +92,7 @@ packagePythonTask := {
   val s = streams.value
   (run in IntegrationTest2).toTask("").value
   createCondaEnvTask.value
-  val destPyDir = join(baseDirectory.value.getAbsolutePath, "target", "scala-2.11", "classes", "mmlspark")
+  val destPyDir = join("target", "scala-2.11", "classes", "mmlspark")
   if (destPyDir.exists()) FileUtils.forceDelete(destPyDir)
   FileUtils.copyDirectory(join(pythonSrcDir.getAbsolutePath, "mmlspark"), destPyDir)
   
