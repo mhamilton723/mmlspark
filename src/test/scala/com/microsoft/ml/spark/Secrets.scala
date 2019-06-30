@@ -37,5 +37,4 @@ object Secrets {
   lazy val visionApiKey: String = getSecret("vision-api-key")
   lazy val adbToken: String = getSecret("adb-token")
 
-
 }
