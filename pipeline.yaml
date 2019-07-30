@@ -72,6 +72,18 @@ jobs:
         failTaskOnFailedTests: true
       condition: and(eq(variables.runTests, 'True'), succeededOrFailed())
 
+- job: Release
+  pool:
+    vmImage: ubuntu-16.04
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+  steps:
+    - task: GithubRelease@0
+      displayName: 'Create GitHub Release'
+      inputs:
+        gitHubConnection: Azure
+        repositoryName: Azure/mmlspark
+        isDraft: true
+
 - job: PythonTests
   condition: eq(variables.runTests, 'True')
   pool:
