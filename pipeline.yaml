@@ -77,11 +77,13 @@ jobs:
     vmImage: ubuntu-16.04
   #condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
   steps:
-    - task: GithubRelease@0
-      displayName: 'Create GitHub Release'
+    - task: GitHubRelease@0
       inputs:
-        gitHubConnection: Azure
-        repositoryName: Azure/mmlspark
+        gitHubConnection: 'MMLSPark Github via PAT'
+        repositoryName: '$(Build.Repository.Name)'
+        action: 'create'
+        target: '$(Build.SourceVersion)'
+        tagSource: 'auto'
         isDraft: true
 
 - job: PythonTests
