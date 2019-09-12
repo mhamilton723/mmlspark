@@ -47,7 +47,7 @@ jobs:
   steps:
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
-    - bash: conda env create -f environment.yaml
+    - bash: conda env create -f build-environment.yaml
       displayName: Create Anaconda environment
     - task: AzureKeyVault@1
       inputs:
@@ -189,7 +189,7 @@ jobs:
   steps:
     - bash: echo "##vso[task.prependpath]$CONDA/bin"
       displayName: Add conda to PATH
-    - bash: conda env create -f environment.yaml
+    - bash: conda env create -f build-environment.yaml
       displayName: Create Anaconda environment
     - bash: |
         source activate mmlspark

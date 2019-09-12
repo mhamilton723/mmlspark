@@ -3,10 +3,6 @@ dependencies:
   - python=3.6
   - pyspark=2.4.3
   - requests
-  - pip:
-    - wheel
-    - sphinx
-    - sphinx_rtd_theme
-    - coverage
-    - pytest
-    - pytest-cov
+  - numpy
+  - pandas
+  - nltk
