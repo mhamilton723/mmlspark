@@ -6,7 +6,7 @@ spark = SparkSession.builder \
     .config("spark.jars.packages", "com.microsoft.ml.spark:mmlspark_2.11:" + os.environ["MMLSPARK_VERSION"] +
             ",org.apache.hadoop:hadoop-azure:2.7.0") \
     .config("spark.jars.repositories", "https://mmlspark.azureedge.net/maven") \
+    .config("spark.hadoop.fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem") \
     .getOrCreate()
 sc = spark.sparkContext
-sc.hadoopConfiguration.set("fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem")
 
