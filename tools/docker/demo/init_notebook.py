@@ -8,3 +8,5 @@ spark = SparkSession.builder \
     .config("spark.jars.repositories", "https://mmlspark.azureedge.net/maven") \
     .getOrCreate()
 sc = spark.sparkContext
+sc.hadoopConfiguration.set("fs.azure", "org.apache.hadoop.fs.azure.NativeAzureFileSystem")
+
