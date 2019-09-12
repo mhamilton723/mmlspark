@@ -1,5 +1,0 @@
-#!/bin/bash
-
-jupyter-notebook --generate-config
-ipython profile create
-cp tools/docker/demo/init_notebook.py .ipython/profile_default/startup

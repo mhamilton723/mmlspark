@@ -1,7 +1,0 @@
-dependencies:
-  - python=3.6
-  - pyspark=2.4.3
-  - requests
-  - numpy
-  - pandas
-  - nltk
