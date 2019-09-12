@@ -17,7 +17,7 @@ RUN chown -R ${NB_UID} ${HOME}
 USER ${NB_USER}
 
 RUN jupyter-notebook --generate-config \
-    && python profile create
+    && ipython profile create
 USER root
 RUN  cp /root/.ipython/profile_default/startup/init_notebook.py /home/jovyan/.ipython/profile_default/startup
 USER ${NB_USER}
