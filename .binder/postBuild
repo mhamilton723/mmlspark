@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cp tools/docker/demo/init_notebook.py .ipython/profile_default/startup
