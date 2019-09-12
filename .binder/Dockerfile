@@ -11,11 +11,9 @@ RUN adduser --disabled-password \
     --uid ${NB_UID} \
     ${NB_USER}
 
-RUN chmod +777 /root/.ipython -R
-
 COPY . ${HOME}
 USER root
 RUN chown -R ${NB_UID} ${HOME}
+RUN  cp /root/.ipython/profile_default/startup/init_notebook.py /home/jovyan/.ipython/profile_default/startup
 USER ${NB_USER}
 
-RUN  cp /root/.ipython/profile_default/startup/init_notebook.py /home/jovyan/.ipython/profile_default/startup
