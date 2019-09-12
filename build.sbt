@@ -42,7 +42,7 @@ createCondaEnvTask := {
     .map(_.split("\\s+").head).contains(condaEnvName)
   if (!hasEnv) {
     Process(
-      "conda env create -f build-environment.yaml",
+      "conda env create -f build-environment.yml",
       new File(".")) ! s.log
   } else {
     println("Found conda env " + condaEnvName)
