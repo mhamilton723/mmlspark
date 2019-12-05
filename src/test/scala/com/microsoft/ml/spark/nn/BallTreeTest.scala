@@ -51,11 +51,12 @@ trait BallTreeTestBase extends TestBase {
     data.map(_ => r.nextInt(nClasses))
   }
 
-  def randomData(size: Int, dim: Int): immutable.IndexedSeq[VectorWithExternalId] = {
+  def randomData(size: Int, dim: Int): IndexedSeq[VectorWithExternalId] = {
     scala.util.Random.setSeed(10)
-    def random(n: Int): immutable.IndexedSeq[Double] = (1 to n).map(_ => (scala.util.Random.nextDouble - 0.5) * 2)
-    (1 to size).map(_ => DenseVector(random(dim).toArray))
-      .zipWithIndex.map { case (dv, i) => VectorWithExternalId(i, dv)}
+
+    IndexedSeq.fill(size){
+      DenseVector.fill(size){(scala.util.Random.nextDouble - 0.5) * 2}
+    }.zipWithIndex.map { case (dv, i) => VectorWithExternalId(i, dv)}
   }
 
 }

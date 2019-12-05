@@ -290,19 +290,22 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
   test("query trees by num classes") {
     val size = 100000 //Math.pow(2, 17).toInt
     val dim =  4096
-    val nClasses = 128
-    val leafSize = 100
-    val subsetSizes = Seq(1, 2, 4, 8, 16, 32, 64, 128)
-    val ks = Seq(1, 2, 5, 10)
+    val nClasses = 1024
+    val leafSize = 10
+    val subsetSizes = Seq(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)
+    val ks = Seq(1, 10)
 
     val data = randomData(size, dim)
     val labels = randomClassLabels(data, nClasses)
     assert(data.length == size)
     assert(labels.length == size)
 
-    val (treeF, _) = profile(BallTree(data, leafSize), 1)
-    val (treeC, _) = profile(ConditionalBallTree(data, labels, leafSize), 1)
-    val (treeE, _) = profile(buildLabelSpecificTrees(data, labels, leafSize), 1)
+    //val (treeF, _) = profile(BallTree(data, leafSize), 1)
+    println("here1")
+    val (treeC, tc) = profile(ConditionalBallTree(data, labels, leafSize), 1)
+    println(tc)
+    val (treeE, te) = profile(buildLabelSpecificTrees(data, labels, leafSize), 1)
+    println(te)
 
     val allMetrics = for {subsetSize <- subsetSizes;
                           k <- ks} yield {
@@ -312,22 +315,22 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
       //System.gc()
       //val (resultBF, timesBF) = profile(randomQueryBF(data, conditioner, k, labels), 10)
       //println("here1")
-      System.gc()
-      val (resultF, timesF) = profile(randomQueryFull(data, treeF, k), 50)
-      println("here2")
+      //System.gc()
+      //val (resultF, timesF) = profile(randomQueryFull(data, treeF, k), 20)
+      //println("here2")
       //System.gc()
       //val (resultAR, timesAR) = profile(randomQueryAdaptiveRetry(data, treeF, conditioner, k, labels), 30)
       //println("here3")
       System.gc()
-      val (resultC, timesC) = profile(randomQueryConditional(data, treeC, conditioner, k), 50)
+      val (resultC, timesC) = profile(randomQueryConditional(data, treeC, conditioner, k), 20)
       println("here4")
       System.gc()
-      val (resultE, timesE) = profile(randomQueryEnsemble(data, treeE, conditioner, k), 50)
+      val (resultE, timesE) = profile(randomQueryEnsemble(data, treeE, conditioner, k), 20)
       println("here5")
 
       val allStats = (
         //getSummaryStats(timesBF, "BF") ++
-        getSummaryStats(timesF, "F") ++
+        //getSummaryStats(timesF, "F") ++
         getSummaryStats(timesC, "C") ++
         //getSummaryStats(timesAR, "AR") ++
         getSummaryStats(timesE, "E") ++
@@ -341,7 +344,10 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
       println(allStats)
       allStats
     }
-    val f = new File(new File(resourcesDirectory, "new_benchmarks"), "queryTimesBySubsetSize.json")
+
+    val dir = new File(resourcesDirectory, "new_benchmarks")
+    if (!dir.exists()){dir.mkdirs()}
+    val f = new File(dir, "queryTimesBySubsetSize.json")
     StreamUtilities.using(new PrintWriter(f)){_.write(allMetrics.toJson.compactPrint)}
   }
 
