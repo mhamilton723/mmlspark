@@ -15,6 +15,8 @@ import com.microsoft.ml.spark.core.env.StreamUtilities
 import com.microsoft.ml.spark.core.test.benchmarks.Benchmarks
 import org.apache.commons.math3.stat.descriptive.rank.Percentile
 
+import scala.collection.immutable.HashSet
+import BenchmarkingUtils._
 
 class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
   def naiveSearch(haystack: IndexedSeq[VectorWithExternalId],
@@ -26,7 +28,7 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
       .zip(labels)
       .filter(vl => conditioner(vl._2))
       .map(vl => vl._1)
-      .map(c => (c, c.features.t * needle))
+      .map(c => (c, dot2(c.features, needle)))
       .sorted(Ordering.by({ p: (VectorWithExternalId, Double) => (p._2, p._1.id) }).reverse)
       .take(k)
       .map { case (dv, d) => BestMatch(dv.id, d) }
@@ -116,19 +118,21 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
     } / xs.size)
   }
 
-  def profile[R](block: => R, n: Int = 10): (R, Seq[Double]) = {
+  def profile[R](block: => R, n: Int = 10): (R, Seq[Double], Seq[Double]) = {
     val results = (0 until n).map { i =>
       val t0 = System.nanoTime()
       val result = block
       val t1 = System.nanoTime()
-      (result, (t1 - t0)/1e6)
+      val counts = BenchmarkingUtils.counts
+      BenchmarkingUtils.counts = 0
+      (result, (t1 - t0) / 1e6, counts.toDouble)
     }
-    (results.last._1, results.map(_._2))
+    (results.last._1, results.map(_._2),  results.map(_._3))
   }
 
   def buildLabelSpecificTrees(data: IndexedSeq[VectorWithExternalId],
                               labels: IndexedSeq[Int],
-                              leafNodeSize:Int): Map[Int, BallTree] = {
+                              leafNodeSize: Int): Map[Int, BallTree] = {
     labels.toSet.map { label: Int =>
       label -> BallTree(labels.zipWithIndex.filter { case (l, _) => l == label }.map(p => data(p._2)), leafNodeSize)
     }.toMap
@@ -137,15 +141,17 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
   val r = scala.util.Random
 
   def randomQueryBF(haystack: IndexedSeq[VectorWithExternalId],
-                    conditioner: Set[Int],
+                    subsetSize: Int,
+                    nSubsets: Int,
                     k: Int,
                     labels: IndexedSeq[Int]): Seq[BestMatch] = {
+    val conditioner = r.shuffle((0 until nSubsets).toList).take(subsetSize).toSet
     val key = haystack(r.nextInt(haystack.length))
     haystack
       .zip(labels)
       .filter(vl => conditioner(vl._2))
       .map(vl => vl._1)
-      .map(c => (c, c.features.t * key.features))
+      .map(c => (c, dot2(c.features, key.features)))
       .sorted(Ordering.by((_: (VectorWithExternalId, Double))._2).reverse)
       .map(p => BestMatch(p._1.id, p._2))
       .take(k)
@@ -153,8 +159,10 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
 
   def randomQueryEnsemble(haystack: IndexedSeq[VectorWithExternalId],
                           ensemble: Map[Int, BallTree],
-                          conditioner: Set[Int],
+                          subsetSize: Int,
+                          nSubsets: Int,
                           k: Int): Seq[BestMatch] = {
+    val conditioner = r.shuffle((0 until nSubsets).toList).take(subsetSize).toSet
     val key = haystack(r.nextInt(haystack.length))
     conditioner.flatMap(c =>
       ensemble(c).findMaximumInnerProducts(key.features, k)
@@ -163,8 +171,12 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
 
   def randomQueryConditional(haystack: IndexedSeq[VectorWithExternalId],
                              ct: ConditionalBallTree[Int],
-                             conditioner: Set[Int],
+                             subsetSize: Int,
+                             nSubsets: Int,
                              k: Int): Seq[BestMatch] = {
+    val conditioner = r.shuffle((0 until nSubsets).toList).take(subsetSize).toSet |
+      Set(10000, 500000, 5000003, 283832892) //Figure out how to use non-optimized sets
+
     val key = haystack(r.nextInt(haystack.length))
     ct.findMaximumInnerProducts(key.features, conditioner, k)
   }
@@ -178,9 +190,11 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
 
   def randomQueryAdaptiveRetry(haystack: IndexedSeq[VectorWithExternalId],
                                bt: BallTree,
-                               conditioner: Set[Int],
+                               subsetSize: Int,
+                               nSubsets: Int,
                                k: Int,
                                labels: IndexedSeq[Int]): Seq[BestMatch] = {
+    val conditioner = r.shuffle((0 until nSubsets).toList).take(subsetSize).toSet
     val key = haystack(r.nextInt(haystack.length))
     var currentK = k
     var matches: Seq[BestMatch] = null
@@ -288,67 +302,91 @@ class ConditionalBallTreeTest extends Benchmarks with BallTreeTestBase {
   }
 
   test("query trees by num classes") {
-    val size = 100000 //Math.pow(2, 17).toInt
-    val dim =  4096
+    val size = 1000000
+    //0 //Math.pow(2, 17).toInt
+    val dim = 4
     val nClasses = 1024
-    val leafSize = 10
+    val leafSize = 1000
     val subsetSizes = Seq(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)
     val ks = Seq(1, 10)
+
+    val mb = 1024 * 1024
+    val runtime = Runtime.getRuntime
+    println("** Used Memory:  " + (runtime.totalMemory - runtime.freeMemory) / mb)
+    println("** Free Memory:  " + runtime.freeMemory / mb)
+    println("** Total Memory: " + runtime.totalMemory / mb)
+    println("** Max Memory:   " + runtime.maxMemory / mb)
 
     val data = randomData(size, dim)
     val labels = randomClassLabels(data, nClasses)
     assert(data.length == size)
     assert(labels.length == size)
 
-    //val (treeF, _) = profile(BallTree(data, leafSize), 1)
-    println("here1")
-    val (treeC, tc) = profile(ConditionalBallTree(data, labels, leafSize), 1)
+    println("** Used Memory:  " + (runtime.totalMemory - runtime.freeMemory) / mb)
+    println("** Free Memory:  " + runtime.freeMemory / mb)
+    println("** Total Memory: " + runtime.totalMemory / mb)
+    println("** Max Memory:   " + runtime.maxMemory / mb)
+
+    println("creating trees")
+    val (treeF, tf, _) = profile(BallTree(data, leafSize), 1)
+    println(tf)
+    val (treeC, tc, _) = profile(ConditionalBallTree(data, labels, leafSize), 1)
     println(tc)
-    val (treeE, te) = profile(buildLabelSpecificTrees(data, labels, leafSize), 1)
+    val (treeE, te,_) = profile(buildLabelSpecificTrees(data, labels, leafSize/10), 1)
     println(te)
 
     val allMetrics = for {subsetSize <- subsetSizes;
                           k <- ks} yield {
-      val conditioner = (0 until subsetSize).toSet
       println(subsetSize, k)
 
-      //System.gc()
-      //val (resultBF, timesBF) = profile(randomQueryBF(data, conditioner, k, labels), 10)
-      //println("here1")
-      //System.gc()
-      //val (resultF, timesF) = profile(randomQueryFull(data, treeF, k), 20)
-      //println("here2")
-      //System.gc()
-      //val (resultAR, timesAR) = profile(randomQueryAdaptiveRetry(data, treeF, conditioner, k, labels), 30)
-      //println("here3")
-      System.gc()
-      val (resultC, timesC) = profile(randomQueryConditional(data, treeC, conditioner, k), 20)
-      println("here4")
-      System.gc()
-      val (resultE, timesE) = profile(randomQueryEnsemble(data, treeE, conditioner, k), 20)
-      println("here5")
+      val (resultBF, timesBF, countsBF) = profile(randomQueryBF(data, subsetSize, nClasses, k, labels), 10)
+      println("1")
+
+      val (resultF, timesF, countsF) = profile(randomQueryFull(data, treeF, k), 20)
+      println("2")
+
+      val (resultAR, timesAR, countsAR) =
+      profile(randomQueryAdaptiveRetry(data, treeF, subsetSize, nClasses, k, labels), 10)
+      println("3")
+
+      val (resultE, timesE, countsE) = profile(randomQueryEnsemble(data, treeE, subsetSize, nClasses, k), 100)
+      println("4")
+
+      val (resultC, timesC, countsC) = profile(randomQueryConditional(data, treeC, subsetSize, nClasses, k), 100)
+      println("5")
+
 
       val allStats = (
-        //getSummaryStats(timesBF, "BF") ++
-        //getSummaryStats(timesF, "F") ++
-        getSummaryStats(timesC, "C") ++
-        //getSummaryStats(timesAR, "AR") ++
-        getSummaryStats(timesE, "E") ++
+        getSummaryStats(timesBF, "BF") ++
+          getSummaryStats(timesF, "F") ++
+          getSummaryStats(timesC, "C") ++
+          getSummaryStats(timesAR, "AR") ++
+          getSummaryStats(timesE, "E") ++
+          getSummaryStats(countsBF, "BFC") ++
+          getSummaryStats(countsF, "FC") ++
+          getSummaryStats(countsC, "CC") ++
+          getSummaryStats(countsAR, "ARC") ++
+          getSummaryStats(countsE, "EC") ++
           Map(
-        "subsetSize"->subsetSize,
-        "k" -> k,
-        "size" -> size,
-        "dim" -> dim,
-        "nClasses" -> nClasses
-        )).mapValues(_.toString)
+            "subsetSize" -> subsetSize,
+            "k" -> k,
+            "size" -> size,
+            "dim" -> dim,
+            "nClasses" -> nClasses
+          )).mapValues(_.toString)
       println(allStats)
       allStats
     }
 
     val dir = new File(resourcesDirectory, "new_benchmarks")
-    if (!dir.exists()){dir.mkdirs()}
+    if (!dir.exists()) {
+      dir.mkdirs()
+    }
     val f = new File(dir, "queryTimesBySubsetSize.json")
-    StreamUtilities.using(new PrintWriter(f)){_.write(allMetrics.toJson.compactPrint)}
+    StreamUtilities.using(new PrintWriter(f)) {
+      _.write(allMetrics.toJson.compactPrint)
+    }
+
   }
 
   /*

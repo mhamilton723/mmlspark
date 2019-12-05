@@ -41,11 +41,21 @@ private final case class Statistics(var pointsInTree: Int = 1,
   }
 }
 
+object BenchmarkingUtils {
+  def dot2(v1: DenseVector[Double], v2: DenseVector[Double]): Double = {
+    counts+=1
+    v1 dot v2
+  }
+  var counts: Int = 0
+}
+import BenchmarkingUtils._
+
 trait BallTreeBase {
 
   val points: IndexedSeq[VectorWithExternalId]
   val leafSize: Int
   val epsilon = 0.000001
+  val splitSubset = 100
 
   //using java version of Random() cause the scala version is only serializable since scala version 2.11
   val randomIntGenerator = new java.util.Random()
@@ -53,7 +63,7 @@ trait BallTreeBase {
   val pointIdx: Range = points.indices
 
   private def mean(pointIdx: Seq[Int]): DenseVector[Double] = {
-    (1.0/pointIdx.length)*pointIdx.map(points(_).features).reduce(_ + _)
+    (1.0 / pointIdx.length) * pointIdx.map(points(_).features).reduce(_ + _)
   }
 
   private def radius(pointIdx: Seq[Int], point: DenseVector[Double]): Double = {
@@ -64,19 +74,21 @@ trait BallTreeBase {
 
   protected def upperBoundMaximumInnerProduct(query: Query, node: Node): Double = {
     query.statistics.boundEvaluations += 1
-    (query.point dot node.ball.mu) + (node.ball.radius * query.normOfQueryPoint)
+    (dot2(query.point, node.ball.mu)) + (node.ball.radius * query.normOfQueryPoint)
   }
 
   private def makeBallSplit(pointIdx: Seq[Int]): (Int, Int) = {
     //finding two points in Set that have largest distance
     val randPoint = points(pointIdx(randomIntGenerator.nextInt(pointIdx.length))).features
+    val randSubset = pointIdx
+
     //TODO: Check if not using squared euclidean distance is ok
-    val pivotPoint1: Int = pointIdx.map { idx: Int => {
+    val pivotPoint1: Int = randSubset.map { idx: Int => {
       val ed = euclideanDistance(randPoint, points(idx).features)
       (idx, ed * ed)
     }
     }.maxBy(_._2)._1
-    val pivotPoint2: Int = pointIdx.map { idx: Int => {
+    val pivotPoint2: Int = randSubset.map { idx: Int => {
       val ed = euclideanDistance(points(pivotPoint1).features, points(idx).features)
       (idx, ed * ed)
     }
@@ -118,7 +130,7 @@ case class BallTree(override val points: IndexedSeq[VectorWithExternalId],
 
   private def linearSearch(query: Query, node: LeafNode): Unit = {
     val bestMatchesCandidates = node.pointIdx.map { idx =>
-      BestMatch(idx, query.point dot points(idx).features)
+      BestMatch(idx, dot2(query.point,points(idx).features))
     }
     query.bestMatches ++= bestMatchesCandidates
     query.statistics.innerProductEvaluations = query.statistics.innerProductEvaluations + node.pointIdx.length
@@ -174,8 +186,8 @@ case class BallTree(override val points: IndexedSeq[VectorWithExternalId],
 }
 
 case class ConditionalBallTree[T](override val points: IndexedSeq[VectorWithExternalId],
-                               labels: IndexedSeq[T],
-                               override val leafSize: Int = 50) extends Serializable with BallTreeBase {
+                                  labels: IndexedSeq[T],
+                                  override val leafSize: Int = 50) extends Serializable with BallTreeBase {
 
   val root: NodeC[T] = addStats(makeBallTree(pointIdx))
 
@@ -197,7 +209,7 @@ case class ConditionalBallTree[T](override val points: IndexedSeq[VectorWithExte
   private def linearSearch(query: Query, conditioner: Set[T], node: LeafNodeC[T]): Unit = {
     val bestMatchesCandidates = node.pointIdx
       .filter(idx => conditioner(labels(idx)))
-      .map(idx => BestMatch(idx, query.point dot points(idx).features))
+      .map(idx => BestMatch(idx, dot2(query.point, points(idx).features)))
 
     query.bestMatches ++= bestMatchesCandidates
     query.statistics.innerProductEvaluations = query.statistics.innerProductEvaluations + node.pointIdx.length

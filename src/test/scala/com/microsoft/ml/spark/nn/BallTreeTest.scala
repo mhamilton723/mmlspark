@@ -53,10 +53,8 @@ trait BallTreeTestBase extends TestBase {
 
   def randomData(size: Int, dim: Int): IndexedSeq[VectorWithExternalId] = {
     scala.util.Random.setSeed(10)
-
-    IndexedSeq.fill(size){
-      DenseVector.fill(size){(scala.util.Random.nextDouble - 0.5) * 2}
-    }.zipWithIndex.map { case (dv, i) => VectorWithExternalId(i, dv)}
+    IndexedSeq.fill(size)(DenseVector.fill(dim)((scala.util.Random.nextDouble - 0.5) * 2))
+      .zipWithIndex.map { case (dv, i) => VectorWithExternalId(i, dv)}
   }
 
 }
