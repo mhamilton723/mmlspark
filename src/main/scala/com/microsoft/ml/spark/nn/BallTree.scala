@@ -4,6 +4,8 @@ import java.io.Serializable
 
 import breeze.linalg.functions.euclideanDistance
 import breeze.linalg.{DenseVector, norm}
+import breeze.linalg._
+
 
 private case class Query(point: DenseVector[Double],
                          normOfQueryPoint: Double,
@@ -51,9 +53,7 @@ trait BallTreeBase {
   val pointIdx: Range = points.indices
 
   private def mean(pointIdx: Seq[Int]): DenseVector[Double] = {
-    pointIdx.foldLeft(DenseVector.zeros[Double](dim)) { case (sumSoFar, idx) =>
-      (sumSoFar + points(idx).features).map { scalar: Double => scalar / pointIdx.length }
-    }
+    (1.0/pointIdx.length)*pointIdx.map(points(_).features).reduce(_ + _)
   }
 
   private def radius(pointIdx: Seq[Int], point: DenseVector[Double]): Double = {
@@ -173,53 +173,43 @@ case class BallTree(override val points: IndexedSeq[VectorWithExternalId],
   }
 }
 
-
-case class ConditionalBallTree(override val points: IndexedSeq[VectorWithExternalId],
-                               labels: IndexedSeq[String],
+case class ConditionalBallTree[T](override val points: IndexedSeq[VectorWithExternalId],
+                               labels: IndexedSeq[T],
                                override val leafSize: Int = 50) extends Serializable with BallTreeBase {
 
-  val root: NodeC = addStats(makeBallTree(pointIdx))
+  val root: NodeC[T] = addStats(makeBallTree(pointIdx))
 
-  private def addStats(node: Node): NodeC = {
+  private def addStats(node: Node): NodeC[T] = {
     node match {
       case l: LeafNode =>
         LeafNodeC(
           l.pointIdx,
-          l.pointIdx.map(labels.apply).foldLeft(Map[String, Int]()) {
-            case (stats, label) => stats.updated(label, stats.getOrElse(label, 0) + 1)
-          },
+          l.pointIdx.map(labels).toSet,
           l.ball
         )
       case i: InnerNode =>
         val lc = addStats(i.leftChild)
         val rc = addStats(i.rightChild)
-        InnerNodeC(
-          lc.stats.foldLeft(rc.stats) {
-            case (stats, (label, count)) => stats.updated(label, stats.getOrElse(label, 0) + count)
-          },
-          i.ball, lc, rc)
+        InnerNodeC(lc.stats | rc.stats, i.ball, lc, rc)
     }
   }
 
-  private def linearSearch(query: Query, conditioner: Set[String], node: LeafNodeC): Unit = {
-    val bestMatchesCandidates = node.pointIdx.flatMap { idx =>
-      if (conditioner(labels(idx))) {
-        Some(BestMatch(idx, query.point dot points(idx).features))
-      } else {
-        None
-      }
-    }
+  private def linearSearch(query: Query, conditioner: Set[T], node: LeafNodeC[T]): Unit = {
+    val bestMatchesCandidates = node.pointIdx
+      .filter(idx => conditioner(labels(idx)))
+      .map(idx => BestMatch(idx, query.point dot points(idx).features))
+
     query.bestMatches ++= bestMatchesCandidates
     query.statistics.innerProductEvaluations = query.statistics.innerProductEvaluations + node.pointIdx.length
   }
 
-  private def traverseTree(query: Query, conditioner: Set[String], node: NodeC = root): Unit = {
-    if (node.stats.keys.exists(conditioner) &
+  private def traverseTree(query: Query, conditioner: Set[T], node: NodeC[T] = root): Unit = {
+    if ((node.stats & conditioner).nonEmpty &
       query.bestMatches.head.value <= upperBoundMaximumInnerProduct(query, node)) {
 
       //This node has potential
       node match {
-        case LeafNodeC(_, _, _) => linearSearch(query, conditioner, node.asInstanceOf[LeafNodeC])
+        case ln: LeafNodeC[T] => linearSearch(query, conditioner, ln)
         case InnerNodeC(_, _, leftChild, rightChild) =>
           val boundLeft = upperBoundMaximumInnerProduct(query, leftChild)
           val boundRight = upperBoundMaximumInnerProduct(query, rightChild)
@@ -240,7 +230,7 @@ case class ConditionalBallTree(override val points: IndexedSeq[VectorWithExterna
   }
 
   def findMultipleMaximumInnerProducts(queries: IndexedSeq[DenseVector[Double]],
-                                       conditioner: Set[String],
+                                       conditioner: Set[T],
                                        k: Int = 1): Seq[Seq[BestMatch]] = {
     queries.map { query: DenseVector[Double] => {
       findMaximumInnerProducts(query, conditioner, k)
@@ -249,7 +239,7 @@ case class ConditionalBallTree(override val points: IndexedSeq[VectorWithExterna
   }
 
   def findMaximumInnerProducts(queryPoint: DenseVector[Double],
-                               conditioner: Set[String],
+                               conditioner: Set[T],
                                k: Int = 1): Seq[BestMatch] = {
     val query = new Query(queryPoint, k)
     query.statistics.pointsInTree = pointIdx.length

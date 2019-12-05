@@ -23,26 +23,26 @@ trait Node extends Serializable {
   def ball: Ball
 }
 
-final case class InnerNodeC(override val stats: Map[String, Int],
+final case class InnerNodeC[T](override val stats: Set[T],
                             override val ball: Ball,
-                            leftChild: NodeC,
-                            rightChild: NodeC) extends NodeC {
+                            leftChild: NodeC[T],
+                            rightChild: NodeC[T]) extends NodeC[T] {
   override def toString: String = {
     s"InnerNode with ${ball.toString} and ${stats.toString}."
   }
 }
 
-final case class LeafNodeC(pointIdx: Seq[Int],
-                           override val stats: Map[String, Int],
-                           override val ball: Ball) extends NodeC {
+final case class LeafNodeC[T](pointIdx: Seq[Int],
+                           override val stats: Set[T],
+                           override val ball: Ball) extends NodeC[T] {
   override def toString: String = {
     s"LeafNode with ${ball.toString} and ${stats.toString} \n " +
       s"and data size of ${pointIdx.length} (example point: ${pointIdx.take(1)}})"
   }
 }
 
-trait NodeC extends Node {
-  def stats: Map[String, Int]
+trait NodeC[T] extends Node {
+  def stats: Set[T]
 }
 
 final case class Ball(mu: DenseVector[Double], radius: Double) extends Serializable

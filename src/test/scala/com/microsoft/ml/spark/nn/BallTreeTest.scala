@@ -43,12 +43,12 @@ trait BallTreeTestBase extends TestBase {
       .zipWithIndex.map { case (dv, i) => VectorWithExternalId(i, dv)}
   }
 
-  def twoClassLabels(data: IndexedSeq[_]): IndexedSeq[String] =
-    IndexedSeq.fill(data.length / 2)("A") ++ IndexedSeq.fill(data.length - data.length / 2)("B")
+  def twoClassLabels(data: IndexedSeq[_]): IndexedSeq[Int] =
+    IndexedSeq.fill(data.length / 2)(1) ++ IndexedSeq.fill(data.length - data.length / 2)(2)
 
-  def randomClassLabels(data: IndexedSeq[_], nClasses: Int): IndexedSeq[String] = {
+  def randomClassLabels(data: IndexedSeq[_], nClasses: Int): IndexedSeq[Int] = {
     val r = scala.util.Random
-    data.map(_ => r.nextInt(nClasses).toString)
+    data.map(_ => r.nextInt(nClasses))
   }
 
   def randomData(size: Int, dim: Int): immutable.IndexedSeq[VectorWithExternalId] = {
