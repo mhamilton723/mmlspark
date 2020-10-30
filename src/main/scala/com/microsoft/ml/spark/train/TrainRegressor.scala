@@ -101,6 +101,7 @@ class TrainRegressor(override val uid: String) extends AutoTrainer[TrainedRegres
     val processedData   = featurizedModel.transform(convertedLabelDataset)
 
     processedData.cache()
+    processedData.show(100,false)
 
     // Train the learner
     val fitModel = regressor.fit(processedData)
