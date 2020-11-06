@@ -11,12 +11,12 @@ import org.apache.spark.ml.util.MLReadable
 import org.apache.spark.sql.{DataFrame, Row}
 import org.scalactic.Equality
 
-trait HasImageSearchKey {
-  lazy val imageSearchKey = sys.env.getOrElse("BING_IMAGE_SEARCH_KEY", Secrets.BingImageSearchKey)
+trait HasBingSearchKey {
+  lazy val imageSearchKey = sys.env.getOrElse("BING_SEARCH_KEY", Secrets.BingSearchKey)
 }
 
 class ImageSearchSuite extends TransformerFuzzing[BingImageSearch]
-  with HasImageSearchKey {
+  with HasBingSearchKey {
 
   import session.implicits._
 

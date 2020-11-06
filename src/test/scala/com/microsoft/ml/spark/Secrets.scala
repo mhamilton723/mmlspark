@@ -30,7 +30,7 @@ object Secrets {
   lazy val CustomSpeechApiKey: String = getSecret("custom-speech-api-key")
   lazy val AnomalyApiKey: String = getSecret("anomaly-api-key")
   lazy val AzureSearchKey: String = getSecret("azure-search-key")
-  lazy val BingImageSearchKey: String = getSecret("bing-image-search-key")
+  lazy val BingSearchKey: String = getSecret("bing-search-key")
   lazy val PowerbiURL: String = getSecret("powerbi-url")
   lazy val AdbToken: String = getSecret("adb-token")
 
